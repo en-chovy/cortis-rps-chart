@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORTIS RPS 취향표</title>
+    <style>
+        /* --- CONFIGURATION & VARIABLES --- */
+        :root {
+            --ios-bg: rgba(255, 255, 255, 0.95);
+            --ios-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+            --cell-width: 112px;
+            --cell-height: 64px;
+            --color-1: #ffadad; --color-1-a: rgba(255, 173, 173, 0.5);
+            --color-2: #ffd6a5; --color-2-a: rgba(255, 214, 165, 0.5);
+            --color-3: #fdffb6; --color-3-a: rgba(253, 255, 182, 0.5);
+            --color-4: #caffbf; --color-4-a: rgba(202, 255, 191, 0.5);
+            --color-5: #9bf6ff; --color-5-a: rgba(155, 246, 255, 0.5);
+            }
+
+        /* --- GLOBAL STYLES --- */
+        * {
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        input, textarea {
+            -webkit-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+            cursor: auto;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0;
+            /* background-color: #f2f2f7; */
+        }
+
+        /* --- MAIN CONTAINER --- */
+        .container {
+            max-width: calc(var(--cell-width) * 6 + 80px);
+            background-color: #ffffff; padding: 0px 32px 48px 32px; margin: 0px;
+            text-align: center; position: relative;
+        }
+        h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; color: #1d1d1f; }
+
+        /* --- LEGEND SECTION --- */
+        .legend-wrapper { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 40px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 10px; position: relative; }
+        .circle-display { width: 24px; height: 24px; border: 1px solid rgba(0,0,0,0.1); border-radius: 50%; cursor: pointer; transition: transform 0.2s; }
+        .circle-display:hover { transform: scale(1.15); }
+        .editable-label { font-size: 16px; font-weight: 500; cursor: pointer; color: #3a3a3c; }
+        .editable-label:hover { text-decoration: underline; color: #8e8e93; }
+        .btn-delete-item { position: absolute; top: -8px; right: -10px; width: 20px; height: 20px; border-radius: 50%; background: #ff453a; color: white; border: none; font-size: 10px; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 5; }
+        .legend-item:hover .btn-delete-item { display: flex; }
+        .btn-add-legend { width: 24px; height: 24px; border: 1.5px dashed #c7c7cc; border-radius: 50%; background: none; cursor: pointer; font-size: 20px; color: #8e8e93; margin-left: 5px; display: flex; align-items: center; justify-content: center; }
+
+        /* --- TABLE SECTION --- */
+        table { border-collapse: separate; border-spacing: 0; table-layout: fixed; margin: 0 auto; width: calc(var(--cell-width) * 6); border-radius: 12px; overflow: hidden; border-right: 1px solid #333; border-bottom: 1px solid #333; }
+        th, td { border-left: 1px solid #333; border-top: 1px solid #333; width: var(--cell-width); height: var(--cell-height); text-align: center; font-size: 16px; box-sizing: border-box; }
+        th { background-color: #636366; color: white; font-weight: 500; }
+        .name-col { background-color: #636366; color: white; font-weight: 600; }
+        .paintable { cursor: pointer; transition: background-color 0.2s; background-color: transparent; }
+
+        /* --- POPUP (iOS STYLE) --- */
+        .ios-popup {
+            display: none; position: absolute; background: var(--ios-bg);
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border-radius: 24px; box-shadow: var(--ios-shadow); padding: 16px;
+            z-index: 1000; border: 0.5px solid rgba(255, 255, 255, 0.5);
+            animation: popIn 0.25s cubic-bezier(0.2, 1, 0.3, 1);
+            flex-direction: column; width: 220px;
+        }
+        .ios-popup::before { content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 8px solid var(--ios-bg); }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        #cellMenu { width: auto; flex-direction: row; gap: 10px; }
+        #cellMenu::before { top: auto; bottom: -8px; border-bottom: none; border-top: 8px solid var(--ios-bg); }
+        .menu-option { width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.05); cursor: pointer; }
+        .menu-reset { width: 34px; height: 34px; border-radius: 50%; background: #e5e5ea; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: #8e8e93; }
+
+        /* --- COLOR PICKER --- */
+        .picker-container { display: flex; flex-direction: column; gap: 12px; }
+        .sat-bright-area { width: 100%; height: 150px; border-radius: 12px; position: relative; cursor: crosshair; overflow: hidden; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); background-color: red; }
+        .picker-cursor { position: absolute; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+        .hue-slider { width: 100%; height: 14px; border-radius: 7px; appearance: none; background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%); cursor: pointer; outline: none; }
+        .hue-slider::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: white; border: 1px solid #ccc; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .btn-done { background: #007aff; color: white; border: none; padding: 10px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 5px; }
+
+        /* --- MODAL SYSTEM --- */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4); justify-content: center; align-items: center;
+            z-index: 2000;
+        }
+        .modal {
+            background: white; padding: 25px; border-radius: 24px;
+            width: 300px; box-shadow: var(--ios-shadow); text-align: left;
+            animation: modalPop 0.3s cubic-bezier(0.2, 1, 0.3, 1);
+        }
+        @keyframes modalPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal h3 { margin-top: 0; font-size: 20px; color: #1c1c1e; }
+        .modal p { color: #8e8e93; margin-bottom: 20px; }
+        .modal input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #d1d1d6; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-buttons button { padding: 12px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .btn-save { background: #007aff; color: white; }
+        .btn-cancel { background: #f2f2f7; color: #3a3a3c; }
+        .btn-delete { background: #ff453a !important; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>CORTIS RPS 취향표</h1>
+
+    <div class="legend-wrapper" id="legendContainer">
+        <div class="legend-item" id="item-1">
+            <div class="circle-display" id="disp-1" style="background-color: var(--color-1);" onclick="openVisualPicker(this, 1)"></div>
+            <span class="editable-label" onclick="openNameModal('label-1')" id="label-1">OTP</span>
+            <button class="btn-delete-item" onclick="openDeleteConfirm('item-1')">✕</button>
+        </div>
+        <div class="legend-item" id="item-2">
+            <div class="circle-display" id="disp-2" style="background-color: var(--color-2);" onclick="openVisualPicker(this, 2)"></div>
+            <span class="editable-label" onclick="openNameModal('label-2')" id="label-2">좋음</span>
+            <button class="btn-delete-item" onclick="openDeleteConfirm('item-2')">✕</button>
+        </div>
+        <div class="legend-item" id="item-3">
+            <div class="circle-display" id="disp-3" style="background-color: var(--color-3);" onclick="openVisualPicker(this, 3)"></div>
+            <span class="editable-label" onclick="openNameModal('label-3')" id="label-3">보통</span>
+            <button class="btn-delete-item" onclick="openDeleteConfirm('item-3')">✕</button>
+        </div>
+        <div class="legend-item" id="item-4">
+            <div class="circle-display" id="disp-4" style="background-color: var(--color-4);" onclick="openVisualPicker(this, 4)"></div>
+            <span class="editable-label" onclick="openNameModal('label-4')" id="label-4">스루</span>
+            <button class="btn-delete-item" onclick="openDeleteConfirm('item-4')">✕</button>
+        </div>
+        <div class="legend-item" id="item-5">
+            <div class="circle-display" id="disp-5" style="background-color: var(--color-5);" onclick="openVisualPicker(this, 5)"></div>
+            <span class="editable-label" onclick="openNameModal('label-5')" id="label-5">지뢰</span>
+            <button class="btn-delete-item" onclick="openDeleteConfirm('item-5')">✕</button>
+        </div>
+        <button class="btn-add-legend" onclick="openAddModal()">+</button>
+    </div>
+
+    <table id="rpsTable">
+        <thead>
+            <tr><th class="name-col"></th><th>마틴</th><th>제임스</th><th>주훈</th><th>성현</th><th>건호</th></tr>
+        </thead>
+        <tbody>
+            <tr><th class="name-col">마틴</th><td class="empty-cell"></td><td class="paintable">젯틴</td><td class="paintable">쮸틴</td><td class="paintable">셩띤</td><td class="paintable">낭틴</td></tr>
+            <tr><th class="name-col">제임스</th><td class="paintable">틴젯</td><td class="empty-cell"></td><td class="paintable">눟젯</td><td class="paintable">셩젯</td><td class="paintable">낭젯</td></tr>
+            <tr><th class="name-col">주훈</th><td class="paintable">틴훈</td><td class="paintable">젯쮸</td><td class="empty-cell"></td><td class="paintable">셩쮼</td><td class="paintable">낭쮼</td></tr>
+            <tr><th class="name-col">성현</th><td class="paintable">틴셩</td><td class="paintable">젯셩</td><td class="paintable">쮸엄</td><td class="empty-cell"></td><td class="paintable">낭셩</td></tr>
+            <tr><th class="name-col">건호</th><td class="paintable">틴껀</td><td class="paintable">젯껀</td><td class="paintable">쮸건</td><td class="paintable">엄껀</td><td class="empty-cell"></td></tr>
+        </tbody>
+    </table>
+
+    <div id="visualPickerPopup" class="ios-popup">
+        <div class="picker-container">
+            <div class="sat-bright-area" id="sbArea"><div class="picker-cursor" id="pickerCursor"></div></div>
+            <input type="range" class="hue-slider" id="hueSlider" min="0" max="360" value="0">
+            <button class="btn-done" onclick="closeAllPopups()">완료</button>
+        </div>
+    </div>
+    <div id="cellMenu" class="ios-popup"></div>
+</div>
+
+<div class="modal-overlay" id="nameModalOverlay">
+    <div class="modal">
+        <h3 id="modalTitle">이름 변경</h3>
+        <input type="text" id="nameInput" placeholder="이름을 입력하세요">
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal('nameModalOverlay')">취소</button>
+            <button class="btn-save" onclick="saveName()">저장</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModalOverlay">
+    <div class="modal">
+        <h3>범례 삭제</h3>
+        <p>이 범례를 정말 삭제할까요?</p>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal('deleteModalOverlay')">취소</button>
+            <button class="btn-save btn-delete" id="confirmDelBtn">삭제</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* --- GLOBAL STATE --- */
+    let activeCell = null;
+    let editingId = null;
+    let isAdding = false;
+    let currentLabelId = '';
+    let itemCount = 5;
+    let currentH = 0, currentS = 100, currentV = 100;
+
+    /* --- COLOR CONVERSION UTILS --- */
+    function hsvToRgb(h, s, v) {
+        s /= 100; v /= 100;
+        let f = (n, k = (n + h / 60) % 6) => v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
+        return [Math.round(f(5) * 255), Math.round(f(3) * 255), Math.round(f(1) * 255)];
+    }
+    function rgbToHex(r, g, b) { return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join(''); }
+
+    function updateColors() {
+        const [r, g, b] = hsvToRgb(currentH, currentS, currentV);
+        const hex = rgbToHex(r, g, b);
+        document.documentElement.style.setProperty(`--color-${editingId}`, hex);
+        document.documentElement.style.setProperty(`--color-${editingId}-a`, `rgba(${r}, ${g}, ${b}, 0.5)`);
+        document.getElementById('sbArea').style.backgroundColor = `hsl(${currentH}, 100%, 50%)`;
+    }
+
+    /* --- COLOR PICKER HANDLERS --- */
+    const sbArea = document.getElementById('sbArea');
+    const hueSlider = document.getElementById('hueSlider');
+
+    function handleSB(e) {
+        const rect = sbArea.getBoundingClientRect();
+        let x = Math.max(0, Math.min(rect.width, (e.clientX || e.touches?.[0].clientX) - rect.left));
+        let y = Math.max(0, Math.min(rect.height, (e.clientY || e.touches?.[0].clientY) - rect.top));
+        currentS = (x / rect.width) * 100; currentV = 100 - (y / rect.height) * 100;
+        document.getElementById('pickerCursor').style.left = x + 'px';
+        document.getElementById('pickerCursor').style.top = y + 'px';
+        updateColors();
+    }
+
+    sbArea.addEventListener('mousedown', (e) => { 
+        handleSB(e);
+        const move = (me) => handleSB(me);
+        const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+        document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    });
+    
+    hueSlider.addEventListener('input', (e) => { currentH = e.target.value; updateColors(); });
+
+    /* --- UI CONTROL (POPUP/MODAL) --- */
+    function openVisualPicker(target, id) { closeAllPopups(); editingId = id; positionPopup(document.getElementById('visualPickerPopup'), target, true); }
+    function closeAllPopups() { document.getElementById('visualPickerPopup').style.display = 'none'; document.getElementById('cellMenu').style.display = 'none'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function positionPopup(popup, target, isBelow) {
+        popup.style.display = 'flex';
+        const rect = target.getBoundingClientRect();
+        const containerRect = document.querySelector('.container').getBoundingClientRect();
+        popup.style.left = (rect.left - containerRect.left + rect.width/2 - popup.offsetWidth/2) + 'px';
+        popup.style.top = isBelow ? (rect.bottom - containerRect.top + 10) + 'px' : (rect.top - containerRect.top - popup.offsetHeight - 10) + 'px';
+    }
+
+    /* --- LEGEND MODAL LOGIC --- */
+    function openNameModal(id) {
+        isAdding = false;
+        currentLabelId = id;
+        document.getElementById('modalTitle').innerText = "이름 변경";
+        document.getElementById('nameInput').value = document.getElementById(id).innerText;
+        document.getElementById('nameModalOverlay').style.display = 'flex';
+    }
+
+    function openAddModal() {
+        isAdding = true;
+        document.getElementById('modalTitle').innerText = "새 범례 추가";
+        document.getElementById('nameInput').value = "";
+        document.getElementById('nameModalOverlay').style.display = 'flex';
+    }
+
+    function saveName() {
+        const val = document.getElementById('nameInput').value.trim();
+        if (!val) return;
+        if (isAdding) {
+            itemCount++;
+            document.documentElement.style.setProperty(`--color-${itemCount}`, '#cccccc');
+            document.documentElement.style.setProperty(`--color-${itemCount}-a`, 'rgba(204,204,204,0.5)');
+            
+            const div = document.createElement('div');
+            div.className = 'legend-item'; div.id = `item-${itemCount}`;
+            div.innerHTML = `<div class="circle-display" id="disp-${itemCount}" style="background-color: var(--color-${itemCount});" onclick="openVisualPicker(this, ${itemCount})"></div><span class="editable-label" onclick="openNameModal('label-${itemCount}')" id="label-${itemCount}">${val}</span><button class="btn-delete-item" onclick="openDeleteConfirm('item-${itemCount}')">✕</button>`;
+            document.getElementById('legendContainer').insertBefore(div, document.querySelector('.btn-add-legend'));
+        } else {
+            document.getElementById(currentLabelId).innerText = val;
+        }
+        closeModal('nameModalOverlay');
+    }
+
+    function openDeleteConfirm(itemId) {
+        document.getElementById('deleteModalOverlay').style.display = 'flex';
+        document.getElementById('confirmDelBtn').onclick = () => { document.getElementById(itemId).remove(); closeModal('deleteModalOverlay'); };
+    }
+
+    /* --- INTERACTION HANDLERS --- */
+    document.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('paintable')) {
+            activeCell = e.target;
+            openCellMenu(e.target);
+        } else if (!e.target.closest('.ios-popup') && 
+             !e.target.classList.contains('circle-display') && 
+             !e.target.closest('.modal')) {
+            closeAllPopups();
+        }
+    });
+
+    function openCellMenu(target) {
+        closeAllPopups();
+        const menu = document.getElementById('cellMenu');
+        menu.innerHTML = '';
+        document.querySelectorAll('.legend-item').forEach(item => {
+            const id = item.id.split('-')[1];
+            const opt = document.createElement('div');
+            opt.className = 'menu-option';
+            opt.style.backgroundColor = `var(--color-${id})`;
+            opt.onclick = () => { activeCell.style.backgroundColor = `var(--color-${id}-a)`; closeAllPopups(); };
+            menu.appendChild(opt);
+        });
+        const reset = document.createElement('div');
+        reset.className = 'menu-reset'; reset.innerText = '✕';
+        reset.onclick = () => { activeCell.style.backgroundColor = 'transparent'; closeAllPopups(); };
+        menu.appendChild(reset);
+        positionPopup(menu, target, false);
+    }
+
+    /* --- DRAG HANDLERS (TEXT SELECT PREVENTION) --- */
+    document.addEventListener('selectstart', (e) => {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+        }
+    });
+
+    document.addEventListener('dragstart', (e) => {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+        }
+    });
+</script>
+
+</body>
+</html>
