@@ -60,10 +60,11 @@
         .btn-add-legend { width: 24px; height: 24px; border: 1.5px dashed #c7c7cc; border-radius: 50%; background: none; cursor: pointer; font-size: 20px; color: #8e8e93; margin-left: 5px; display: flex; align-items: center; justify-content: center; }
 
         /* --- TABLE SECTION --- */
-        table { border-collapse: separate; border-spacing: 0; table-layout: fixed; margin: 0 auto; width: calc(var(--cell-width) * 6); border-radius: 12px; overflow: hidden; border-right: 1px solid #333; border-bottom: 1px solid #333; }
-        th, td { border-left: 1px solid #333; border-top: 1px solid #333; width: var(--cell-width); height: var(--cell-height); text-align: center; font-size: 16px; box-sizing: border-box; }
-        th { background-color: #636366; color: white; font-weight: 500; }
-        .name-col { background-color: #636366; color: white; font-weight: 600; }
+        .table-shell{ width: calc(var(--cell-width) * 6); margin: 0 auto; border: 1px solid #333; border-radius: 12px; overflow: hidden; background: #fff; }
+        #rpsTable{ width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; border: 0; border-radius: 0; overflow: visible; }
+        #rpsTable th, #rpsTable td { border-left: 1px solid #333; border-top: 1px solid #333; width: var(--cell-width); height: var(--cell-height); text-align: center; font-size: 16px; box-sizing: border-box; }
+        #rpsTable tr > *:first-child{ border-left: 0; background-color: #636366; color: white; font-weight: 600; }
+        #rpsTable thead tr:first-child > *{ border-top: 0; background-color: #636366; color: white; font-weight: 600; }        
         .paintable { cursor: pointer; transition: background-color 0.2s; background-color: transparent; }
 
         /* --- POPUP (iOS STYLE) --- */
@@ -147,18 +148,20 @@
         <button class="btn-add-legend" onclick="openAddModal()">+</button>
     </div>
 
-    <table id="rpsTable">
-        <thead>
-            <tr><th class="name-col"></th><th>마틴</th><th>제임스</th><th>주훈</th><th>성현</th><th>건호</th></tr>
-        </thead>
-        <tbody>
-            <tr><th class="name-col">마틴</th><td class="empty-cell"></td><td class="paintable">젯틴</td><td class="paintable">훈틴</td><td class="paintable">셩띤</td><td class="paintable">낭틴</td></tr>
-            <tr><th class="name-col">제임스</th><td class="paintable">틴젯</td><td class="empty-cell"></td><td class="paintable">눟젯</td><td class="paintable">셩젯</td><td class="paintable">낭젯</td></tr>
-            <tr><th class="name-col">주훈</th><td class="paintable">틴훈</td><td class="paintable">젯쮸</td><td class="empty-cell"></td><td class="paintable">셩쮼</td><td class="paintable">낭쮼</td></tr>
-            <tr><th class="name-col">성현</th><td class="paintable">틴셩</td><td class="paintable">젯셩</td><td class="paintable">쮸엄</td><td class="empty-cell"></td><td class="paintable">낭셩</td></tr>
-            <tr><th class="name-col">건호</th><td class="paintable">틴껀</td><td class="paintable">젬껀</td><td class="paintable">쮸건</td><td class="paintable">엄껀</td><td class="empty-cell"></td></tr>
-        </tbody>
-    </table>
+    <div class="table-shell">
+        <table id="rpsTable">
+            <thead>
+                <tr><th class="name-col"></th><th>마틴</th><th>제임스</th><th>주훈</th><th>성현</th><th>건호</th></tr>
+            </thead>
+            <tbody>
+                <tr><th class="name-col">마틴</th><td class="empty-cell"></td><td class="paintable">젯틴</td><td class="paintable">훈틴</td><td class="paintable">셩띤</td><td class="paintable">낭틴</td></tr>
+                <tr><th class="name-col">제임스</th><td class="paintable">틴젯</td><td class="empty-cell"></td><td class="paintable">눟젯</td><td class="paintable">셩젯</td><td class="paintable">낭젯</td></tr>
+                <tr><th class="name-col">주훈</th><td class="paintable">틴훈</td><td class="paintable">젯쮸</td><td class="empty-cell"></td><td class="paintable">셩쮼</td><td class="paintable">낭쮼</td></tr>
+                <tr><th class="name-col">성현</th><td class="paintable">틴셩</td><td class="paintable">젯셩</td><td class="paintable">쮸엄</td><td class="empty-cell"></td><td class="paintable">낭셩</td></tr>
+                <tr><th class="name-col">건호</th><td class="paintable">틴껀</td><td class="paintable">젬껀</td><td class="paintable">쮸건</td><td class="paintable">엄껀</td><td class="empty-cell"></td></tr>
+            </tbody>
+        </table>
+    </div>
 
     <div id="visualPickerPopup" class="ios-popup">
         <div class="picker-container">
