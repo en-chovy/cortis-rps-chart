@@ -13,31 +13,31 @@
 
     <div class="legend-wrapper" id="legendContainer">
         <div class="legend-item" id="item-1">
-            <div class="circle-display" id="disp-1" style="background-color: var(--color-1);" onclick="openVisualPicker(this, 1)"></div>
-            <span class="editable-label" onclick="openNameModal('label-1')" id="label-1">OTP</span>
-            <button class="btn-delete-item" onclick="openDeleteConfirm('item-1')">✕</button>
+            <div class="circle-display" id="disp-1" style="background-color: var(--color-1);"></div>
+            <span class="editable-label" id="label-1">OTP</span>
+            <button class="btn-delete-item">✕</button>
         </div>
         <div class="legend-item" id="item-2">
-            <div class="circle-display" id="disp-2" style="background-color: var(--color-2);" onclick="openVisualPicker(this, 2)"></div>
-            <span class="editable-label" onclick="openNameModal('label-2')" id="label-2">좋음</span>
-            <button class="btn-delete-item" onclick="openDeleteConfirm('item-2')">✕</button>
+            <div class="circle-display" id="disp-2" style="background-color: var(--color-2);"></div>
+            <span class="editable-label" id="label-2">좋음</span>
+            <button class="btn-delete-item">✕</button>
         </div>
         <div class="legend-item" id="item-3">
-            <div class="circle-display" id="disp-3" style="background-color: var(--color-3);" onclick="openVisualPicker(this, 3)"></div>
-            <span class="editable-label" onclick="openNameModal('label-3')" id="label-3">보통</span>
-            <button class="btn-delete-item" onclick="openDeleteConfirm('item-3')">✕</button>
+            <div class="circle-display" id="disp-3" style="background-color: var(--color-3);"></div>
+            <span class="editable-label" id="label-3">보통</span>
+            <button class="btn-delete-item">✕</button>
         </div>
         <div class="legend-item" id="item-4">
-            <div class="circle-display" id="disp-4" style="background-color: var(--color-4);" onclick="openVisualPicker(this, 4)"></div>
-            <span class="editable-label" onclick="openNameModal('label-4')" id="label-4">스루</span>
-            <button class="btn-delete-item" onclick="openDeleteConfirm('item-4')">✕</button>
+            <div class="circle-display" id="disp-4" style="background-color: var(--color-4);"></div>
+            <span class="editable-label" id="label-4">스루</span>
+            <button class="btn-delete-item">✕</button>
         </div>
         <div class="legend-item" id="item-5">
-            <div class="circle-display" id="disp-5" style="background-color: var(--color-5);" onclick="openVisualPicker(this, 5)"></div>
-            <span class="editable-label" onclick="openNameModal('label-5')" id="label-5">지뢰</span>
-            <button class="btn-delete-item" onclick="openDeleteConfirm('item-5')">✕</button>
+            <div class="circle-display" id="disp-5" style="background-color: var(--color-5);"></div>
+            <span class="editable-label" id="label-5">지뢰</span>
+            <button class="btn-delete-item">✕</button>
         </div>
-        <button class="btn-add-legend" onclick="openAddModal()">+</button>
+        <button class="btn-add-legend">+</button>
     </div>
 
     <div class="table-shell">
@@ -59,7 +59,7 @@
         <div class="picker-container">
             <div class="sat-bright-area" id="sbArea"><div class="picker-cursor" id="pickerCursor"></div></div>
             <input type="range" class="hue-slider" id="hueSlider" min="0" max="360" value="0">
-            <button class="btn-done" onclick="closeAllPopups()">완료</button>
+            <button class="btn-done">완료</button>
         </div>
     </div>
     <div id="cellMenu" class="ios-popup"></div>
@@ -70,8 +70,8 @@
         <h3 id="modalTitle">이름 변경</h3>
         <input type="text" id="nameInput" placeholder="이름을 입력하세요">
         <div class="modal-buttons">
-            <button class="btn-cancel" onclick="closeModal('nameModalOverlay')">취소</button>
-            <button class="btn-save" onclick="saveName()">저장</button>
+            <button class="btn-cancel">취소</button>
+            <button class="btn-save">저장</button>
         </div>
     </div>
 </div>
@@ -81,7 +81,7 @@
         <h3>범례 삭제</h3>
         <p>이 범례를 정말 삭제할까요?</p>
         <div class="modal-buttons">
-            <button class="btn-cancel" onclick="closeModal('deleteModalOverlay')">취소</button>
+            <button class="btn-cancel">취소</button>
             <button class="btn-save btn-delete" id="confirmDelBtn">삭제</button>
         </div>
     </div>
