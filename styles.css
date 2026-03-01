@@ -1,3 +1,5 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
 /* --- CONFIGURATION & VARIABLES --- */
 :root {
     --ios-bg: rgba(255, 255, 255, 0.95);
