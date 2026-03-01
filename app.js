@@ -7,6 +7,7 @@ let currentLabelId = '';       // label DOM id currently being edited
 let itemCount = 5;             // last legend id
 
 let currentH = 0, currentS = 100, currentV = 100;  // HSV for visual picker
+let currentA = 0.5; // Alpha value
 
 let pendingDeleteItemId = null;
 
@@ -24,6 +25,29 @@ function rgbToHex(r, g, b) {
   return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
+function hexToRgb(hex) {
+    hex = hex.trim().replace(/^#/, '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const num = parseInt(hex, 16);
+    return [num >> 16, (num >> 8) & 255, num & 255];
+}
+
+function rgbToHsv(r, g, b) {
+    r /= 255, g /= 255, b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const d = max - min;
+    let h = 0, s = max === 0 ? 0 : d / max, v = max;
+    if (max !== min) {
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    return [Math.round(h * 360), Math.round(s * 100), Math.round(v * 100)];
+}
+
 function updateColors() {
   if (editingId == null) return;
 
@@ -31,10 +55,15 @@ function updateColors() {
   const hex = rgbToHex(r, g, b);
 
   document.documentElement.style.setProperty(`--color-${editingId}`, hex);
-  document.documentElement.style.setProperty(`--color-${editingId}-a`, `rgba(${r}, ${g}, ${b}, 0.5)`);
+  document.documentElement.style.setProperty(`--color-${editingId}-a`, `rgba(${r}, ${g}, ${b}, ${currentA})`);
 
   const sbArea = document.getElementById('sbArea');
   if (sbArea) sbArea.style.backgroundColor = `hsl(${currentH}, 100%, 50%)`;
+  
+  const alphaSlider = document.getElementById('alphaSlider');
+  if (alphaSlider) {
+      alphaSlider.style.background = `linear-gradient(to right, rgba(${r},${g},${b},0), rgba(${r},${g},${b},1)), repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 14px 14px`;
+  }
 }
 
 /* --- UI CONTROL (POPUP/MODAL) --- */
@@ -71,8 +100,42 @@ function openVisualPicker(target, id) {
   closeAllPopups();
   editingId = Number(id);
 
+  const rootStyle = getComputedStyle(document.documentElement);
+  const hexColor = rootStyle.getPropertyValue(`--color-${id}`).trim();
+  const rgbaColor = rootStyle.getPropertyValue(`--color-${id}-a`).trim();
+
+  if (hexColor) {
+      const [r, g, b] = hexToRgb(hexColor);
+      const [h, s, v] = rgbToHsv(r, g, b);
+      currentH = h; 
+      currentS = s; 
+      currentV = v;
+
+      // 정규식을 이용해 rgba 문자열에서 투명도 숫자만 쏙 빼오기
+      const alphaMatch = rgbaColor.match(/([0-9.]+)\s*\)$/);
+      currentA = alphaMatch ? parseFloat(alphaMatch[1]) : 0.5;
+
+      // 3. 슬라이더 UI에 변환된 값 세팅
+      const hueSlider = document.getElementById('hueSlider');
+      if (hueSlider) hueSlider.value = currentH;
+      const alphaSlider = document.getElementById('alphaSlider');
+      if (alphaSlider) alphaSlider.value = currentA;
+  }
+  
   const popup = document.getElementById('visualPickerPopup');
   positionPopup(popup, target, true);
+
+  const sbArea = document.getElementById('sbArea');
+  const cursor = document.getElementById('pickerCursor');
+  if (sbArea && cursor) {
+      const rect = sbArea.getBoundingClientRect();
+      const x = (currentS / 100) * rect.width;
+      const y = ((100 - currentV) / 100) * rect.height;
+      cursor.style.left = x + 'px';
+      cursor.style.top = y + 'px';
+  }
+
+  updateColors();
 }
 
 /* --- LEGEND MODAL LOGIC --- */
@@ -109,7 +172,7 @@ function saveName() {
     div.className = 'legend-item';
     div.id = `item-${itemCount}`;
     div.innerHTML = `
-      <div class="circle-display" id="disp-${itemCount}" style="background-color: var(--color-${itemCount});"></div>
+      <div class="circle-display" id="disp-${itemCount}" style="background-color: var(--color-${itemCount}-a);"></div>
       <span class="editable-label" id="label-${itemCount}">${val}</span>
       <button class="btn-delete-item" type="button">✕</button>
     `.trim();
@@ -147,7 +210,7 @@ function openCellMenu(target) {
     const id = Number(item.id.split('-')[1]);
     const opt = document.createElement('div');
     opt.className = 'menu-option';
-    opt.style.backgroundColor = `var(--color-${id})`;
+    opt.style.backgroundColor = `var(--color-${id}-a)`;
     opt.addEventListener('click', () => {
       if (activeCell) activeCell.style.backgroundColor = `var(--color-${id}-a)`;
       closeAllPopups();
@@ -171,6 +234,7 @@ function openCellMenu(target) {
 function initColorPicker() {
   const sbArea = document.getElementById('sbArea');
   const hueSlider = document.getElementById('hueSlider');
+  const alphaSlider = document.getElementById('alphaSlider');
 
   if (!sbArea || !hueSlider) return;
 
@@ -230,6 +294,13 @@ function initColorPicker() {
     currentH = e.target.value;
     updateColors();
   });
+
+  if (alphaSlider) {
+    alphaSlider.addEventListener('input', (e) => {
+      currentA = e.target.value;
+      updateColors();
+    });
+  }
 }
 
 function initLegendDelegation() {
