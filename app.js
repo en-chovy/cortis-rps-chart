@@ -11,6 +11,12 @@ let currentA = 0.5; // Alpha value
 
 let pendingDeleteItemId = null;
 
+let tempH = 0, tempS = 100, tempV = 100, tempA = 0.5;
+let unifiedEditingId = null;
+function isMobile() {
+    return window.innerWidth <= 768;
+}
+
 /* --- COLOR CONVERSION UTILS --- */
 function hsvToRgb(h, s, v) {
   s /= 100; v /= 100;
@@ -111,11 +117,9 @@ function openVisualPicker(target, id) {
       currentS = s; 
       currentV = v;
 
-      // 정규식을 이용해 rgba 문자열에서 투명도 숫자만 쏙 빼오기
       const alphaMatch = rgbaColor.match(/([0-9.]+)\s*\)$/);
       currentA = alphaMatch ? parseFloat(alphaMatch[1]) : 0.5;
 
-      // 3. 슬라이더 UI에 변환된 값 세팅
       const hueSlider = document.getElementById('hueSlider');
       if (hueSlider) hueSlider.value = currentH;
       const alphaSlider = document.getElementById('alphaSlider');
@@ -136,6 +140,115 @@ function openVisualPicker(target, id) {
   }
 
   updateColors();
+}
+
+function updateUnifiedColorsPreview() {
+    const [r, g, b] = hsvToRgb(Number(tempH), Number(tempS), Number(tempV));
+    const sbArea = document.getElementById('unifiedSbArea');
+    if (sbArea) sbArea.style.backgroundColor = `hsl(${tempH}, 100%, 50%)`;
+    
+    const alphaSlider = document.getElementById('unifiedAlphaSlider');
+    if (alphaSlider) {
+        alphaSlider.style.background = `linear-gradient(to right, rgba(${r},${g},${b},0), rgba(${r},${g},${b},1)), repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 14px 14px`;
+    }
+}
+
+function openUnifiedModal(id) {
+    closeAllPopups();
+    unifiedEditingId = id;
+    const rootStyle = getComputedStyle(document.documentElement);
+    
+    const labelEl = document.getElementById(`label-${id}`);
+    document.getElementById('unifiedNameInput').value = labelEl ? labelEl.innerText : '';
+
+    const hexColor = rootStyle.getPropertyValue(`--color-${id}`).trim();
+    const rgbaColor = rootStyle.getPropertyValue(`--color-${id}-a`).trim();
+
+    if (hexColor) {
+        const [r, g, b] = hexToRgb(hexColor);
+        const [h, s, v] = rgbToHsv(r, g, b);
+        tempH = h; tempS = s; tempV = v;
+        const alphaMatch = rgbaColor.match(/([0-9.]+)\s*\)$/);
+        tempA = alphaMatch ? parseFloat(alphaMatch[1]) : 0.5;
+
+        document.getElementById('unifiedHueSlider').value = tempH;
+        document.getElementById('unifiedAlphaSlider').value = tempA;
+    }
+
+    document.getElementById('unifiedModalOverlay').style.display = 'flex';
+    
+    requestAnimationFrame(() => {
+        const cursor = document.getElementById('unifiedPickerCursor');
+        const rect = document.getElementById('unifiedSbArea').getBoundingClientRect();
+        const x = (tempS / 100) * rect.width;
+        const y = ((100 - tempV) / 100) * rect.height;
+        if (cursor) {
+            cursor.style.left = x + 'px';
+            cursor.style.top = y + 'px';
+        }
+        updateUnifiedColorsPreview();
+    });
+}
+
+function saveUnified() {
+    const val = document.getElementById('unifiedNameInput').value.trim();
+    if (!val) return;
+
+    const label = document.getElementById(`label-${unifiedEditingId}`);
+    if (label) label.innerText = val;
+
+    const [r, g, b] = hsvToRgb(Number(tempH), Number(tempS), Number(tempV));
+    const hex = rgbToHex(r, g, b);
+    document.documentElement.style.setProperty(`--color-${unifiedEditingId}`, hex);
+    document.documentElement.style.setProperty(`--color-${unifiedEditingId}-a`, `rgba(${r}, ${g}, ${b}, ${tempA})`);
+
+    closeModal('unifiedModalOverlay');
+}
+
+function initUnifiedColorPicker() {
+    const sbArea = document.getElementById('unifiedSbArea');
+    const hueSlider = document.getElementById('unifiedHueSlider');
+    const alphaSlider = document.getElementById('unifiedAlphaSlider');
+
+    if (!sbArea || !hueSlider) return;
+
+    function handleSB(e) {
+        const rect = sbArea.getBoundingClientRect();
+        const cx = e.touches?.length ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches?.length ? e.touches[0].clientY : e.clientY;
+
+        let x = Math.max(0, Math.min(rect.width, cx - rect.left));
+        let y = Math.max(0, Math.min(rect.height, cy - rect.top));
+
+        tempS = (x / rect.width) * 100;
+        tempV = 100 - (y / rect.height) * 100;
+
+        const cursor = document.getElementById('unifiedPickerCursor');
+        if (cursor) { cursor.style.left = x + 'px'; cursor.style.top = y + 'px'; }
+        updateUnifiedColorsPreview();
+    }
+
+    const attachDrag = (startEvent, moveEvent, endEvent) => {
+        sbArea.addEventListener(startEvent, (e) => {
+            if(startEvent === 'touchstart') e.preventDefault(); // 스크롤 방지
+            handleSB(e);
+            const move = (me) => handleSB(me);
+            const up = () => {
+                document.removeEventListener(moveEvent, move);
+                document.removeEventListener(endEvent, up);
+                if(startEvent === 'touchstart') document.removeEventListener('touchcancel', up);
+            };
+            document.addEventListener(moveEvent, move, { passive: false });
+            document.addEventListener(endEvent, up);
+            if(startEvent === 'touchstart') document.addEventListener('touchcancel', up);
+        }, { passive: false });
+    };
+
+    attachDrag('mousedown', 'mousemove', 'mouseup');
+    attachDrag('touchstart', 'touchmove', 'touchend');
+
+    hueSlider.addEventListener('input', (e) => { tempH = e.target.value; updateUnifiedColorsPreview(); });
+    if (alphaSlider) alphaSlider.addEventListener('input', (e) => { tempA = e.target.value; updateUnifiedColorsPreview(); });
 }
 
 /* --- LEGEND MODAL LOGIC --- */
@@ -308,50 +421,37 @@ function initLegendDelegation() {
   if (!legendContainer) return;
 
   legendContainer.addEventListener('click', (e) => {
-    const circle = e.target.closest('.circle-display');
-    if (circle && legendContainer.contains(circle)) {
-      const id = Number(circle.id.split('-')[1]);
-      openVisualPicker(circle, id);
-      return;
-    }
-
-    const label = e.target.closest('.editable-label');
-    if (label && legendContainer.contains(label)) {
-      openNameModal(label.id);
-      return;
-    }
-
-    const delBtn = e.target.closest('.btn-delete-item');
-    if (delBtn && legendContainer.contains(delBtn)) {
-      const item = delBtn.closest('.legend-item');
-      if (item) openDeleteConfirm(item.id);
-      return;
-    }
-
     const addBtn = e.target.closest('.btn-add-legend');
     if (addBtn && legendContainer.contains(addBtn)) {
       openAddModal();
       return;
     }
+
+    const item = e.target.closest('.legend-item');
+    if (item && legendContainer.contains(item)) {
+        const id = Number(item.id.split('-')[1]);
+        
+        if (isMobile()) {
+            openUnifiedModal(id);
+        } else {
+            if (e.target.closest('.circle-display')) openVisualPicker(e.target, id);
+            else if (e.target.closest('.editable-label')) openNameModal(`label-${id}`);
+            else if (e.target.closest('.btn-delete-item')) openDeleteConfirm(item.id);
+        }
+    }
   });
 }
 
 function initModalButtons() {
-  // Name modal
   const nameOverlay = document.getElementById('nameModalOverlay');
   if (nameOverlay) {
     nameOverlay.querySelector('.btn-cancel')?.addEventListener('click', () => closeModal('nameModalOverlay'));
     nameOverlay.querySelector('.btn-save')?.addEventListener('click', saveName);
   }
 
-  // Delete modal
   const delOverlay = document.getElementById('deleteModalOverlay');
   if (delOverlay) {
-    delOverlay.querySelector('.btn-cancel')?.addEventListener('click', () => {
-      pendingDeleteItemId = null;
-      closeModal('deleteModalOverlay');
-    });
-
+    delOverlay.querySelector('.btn-cancel')?.addEventListener('click', () => { pendingDeleteItemId = null; closeModal('deleteModalOverlay'); });
     document.getElementById('confirmDelBtn')?.addEventListener('click', () => {
       if (!pendingDeleteItemId) return;
       document.getElementById(pendingDeleteItemId)?.remove();
@@ -360,9 +460,22 @@ function initModalButtons() {
     });
   }
 
-  // Visual picker "done"
   const picker = document.getElementById('visualPickerPopup');
   picker?.querySelector('.btn-done')?.addEventListener('click', closeAllPopups);
+  document.getElementById('unifiedSaveBtn')?.addEventListener('click', saveUnified);
+  document.getElementById('unifiedDeleteBtn')?.addEventListener('click', () => {
+      if (!unifiedEditingId) return;
+      document.getElementById(`item-${unifiedEditingId}`)?.remove();
+      closeModal('unifiedModalOverlay');
+  });
+
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('mousedown', (e) => {
+          if (e.target === overlay) {
+              closeModal(overlay.id);
+          }
+      });
+  });
 }
 
 function initGlobalInteraction() {
@@ -395,6 +508,7 @@ function initGlobalInteraction() {
 // Boot (script is loaded at end of body, but keep safe)
 (function boot() {
   initColorPicker();
+  initUnifiedColorPicker();
   initLegendDelegation();
   initModalButtons();
   initGlobalInteraction();

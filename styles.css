@@ -92,7 +92,6 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
     appearance: none; 
     cursor: pointer; 
     outline: none;
-    /* 자바스크립트에서 동적으로 색상이 덮어씌워질 기본 배경(격자무늬) */
     background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 14px 14px;
 }
 .alpha-slider::-webkit-slider-thumb { 
@@ -126,3 +125,152 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
 .btn-save { background: #007aff; color: white; }
 .btn-cancel { background: #f2f2f7; color: #3a3a3c; }
 .btn-delete { background: #ff453a !important; color: white; }
+
+/* --- Mobile --- */
+@media (max-width: 768px) {
+    :root {
+        --cell-width: 14vw;
+        --cell-height: 9vw;
+    }
+    body {
+        min-height: 100dvh;
+        align-items: flex-start;
+        padding-top: 5dvh;
+    }
+    h1 {
+        font-size: 14px;
+        margin: 16px 0;
+    }
+    .legend-wrapper {
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .legend-item {
+        gap: 5px;
+    }
+    .circle-display {
+        width: 14px;
+        height: 14px;
+    }
+    .editable-label {
+        font-size: 12px;
+    }
+    .legend-item:hover .btn-delete-item {
+        display: none;
+    }
+    .btn-add-legend {
+        width: 14px;
+        height: 14px;
+        border: 1.5px dashed #c7c7cc;
+        font-size: 10px;
+        margin-left: 5px;
+    }
+    .circle-display:hover {
+        transform: none;
+    }
+    .editable-label:hover {
+        text-decoration: none; color: #3a3a3c;
+    }
+    .table-shell {
+        border-radius: 10px;
+    }
+    #rpsTable th, #rpsTable td {
+        font-size: 10px;
+        font-weight: 400;
+    }
+    #rpsTable tr > *:first-child {
+        font-weight: 500;
+    }
+    #rpsTable thead tr:first-child > * {
+        font-weight: 500;
+    }
+    .unified-modal { 
+        width: 75%;
+        max-width: 360px; 
+        padding: 20px; 
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); 
+    }
+    .unified-modal h3,
+    #modalTitle {
+        text-align: center;
+        margin-top: 0;
+        margin-bottom: 16px;
+        font-size: 16px;
+        font-weight: 600;
+    }
+    .unified-modal .input-group { 
+        margin-bottom: 10px;
+    }
+    .unified-modal .input-group label,
+    .unified-modal .picker-container label { 
+        display: block; 
+        font-size: 12px; 
+        font-weight: 400; 
+        color: #8e8e93; 
+        margin-bottom: 0px;
+        text-align: left;
+    }
+    .unified-modal .input-group input { 
+        width: 100%;
+        padding: 12px 14px;
+        background-color: #f2f2f7;
+        border: none; 
+        border-radius: 12px; 
+        font-size: 16px; 
+        box-sizing: border-box; 
+        outline: none;
+        margin: 6px 0 4px 0;
+    }
+    .picker-container {
+        gap: 6px;
+    }
+    .sat-bright-area {
+        height: 12dvh;
+    }
+    #unifiedHueSlider,
+    #unifiedAlphaSlider {
+        margin: 0;
+    }
+
+    .btn-cancel,
+    .btn-save,
+    .btn-delete-text {
+        height: 44px;
+        font-size: 16px;
+        font-weight: 500;
+        border-radius: 10px;
+        border: none;
+    }
+    .btn-delete-text {
+        width: 100%;
+        color: #ff453a;
+        background: #ffecec;
+    }
+    .unified-action-buttons { 
+        display: flex; 
+        flex-direction: column-reverse;
+        gap: 10px; 
+        margin-top: 16px; 
+    }
+    .unified-action-buttons .right-buttons { 
+        display: flex; 
+        width: 100%; 
+        gap: 10px; 
+    }
+    .unified-action-buttons .right-buttons button {
+        flex: 1;
+    }
+    .ios-popup {
+        border-radius: 12px;
+    }
+    #cellMenu {
+        gap: 8px;
+        padding: 8px 10px;      
+    }
+    .menu-option,
+    .menu-reset {
+        width: 20px; height: 20px;
+        font-size: 12px;
+    }
+}
