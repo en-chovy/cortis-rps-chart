@@ -138,7 +138,7 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
         padding-top: 5dvh;
     }
     h1 {
-        font-size: 14px;
+        font-size: clamp(14px, 2.6vw, 28px);
         margin: 16px 0;
     }
     .legend-wrapper {
@@ -149,19 +149,18 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
         gap: 5px;
     }
     .circle-display {
-        width: 14px;
-        height: 14px;
-        border: 0.6px solid rgba(0,0,0,0.1);
+        width: clamp(14px, 2.6vw, 28px);
+        height: clamp(14px, 2.6vw, 28px);
     }
     .editable-label {
-        font-size: 12px;
+        font-size: clamp(12px, 2.3vw, 20px);
     }
     .legend-item:hover .btn-delete-item {
         display: none;
     }
     .btn-add-legend {
-        width: 14px;
-        height: 14px;
+        width: clamp(14px, 2.6vw, 28px);
+        height: clamp(14px, 2.6vw, 28px);
         border: 1.5px dashed #c7c7cc;
         font-size: 10px;
         margin-left: 5px;
@@ -173,14 +172,14 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
         text-decoration: none; color: #3a3a3c;
     }
     .table-shell {
-        border-radius: 10px;
-        border: 0.6px solid #444;
+        border-radius: clamp(8px, 2.2vw, 20px);
+        border: 1px solid #333;
     }
     #rpsTable th, #rpsTable td {
-        font-size: 10px;
+        font-size: clamp(10px, 2vw, 24px);
         font-weight: 400;
-        border-left: 0.6px solid #444;
-        border-top: 0.6px solid #444;
+        border-left: 1px solid #333;
+        border-top: 1px solid #333;
     }
     #rpsTable tr > *:first-child {
         font-weight: 500;
@@ -190,7 +189,7 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
     }
     .unified-modal { 
         width: 75%;
-        max-width: 360px; 
+        max-width: 340px; 
         padding: 20px; 
         border-radius: 16px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); 
@@ -276,6 +275,5 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
     .menu-reset {
         width: 16px; height: 16px;
         font-size: 12px;
-        border: 0.6px solid rgba(0,0,0,0.1);
     }
 }
