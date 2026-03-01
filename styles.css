@@ -151,6 +151,7 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
     .circle-display {
         width: 14px;
         height: 14px;
+        border: 0.6px solid rgba(0,0,0,0.1);
     }
     .editable-label {
         font-size: 12px;
@@ -173,10 +174,13 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
     }
     .table-shell {
         border-radius: 10px;
+        border: 0.6px solid #444;
     }
     #rpsTable th, #rpsTable td {
         font-size: 10px;
         font-weight: 400;
+        border-left: 0.6px solid #444;
+        border-top: 0.6px solid #444;
     }
     #rpsTable tr > *:first-child {
         font-weight: 500;
@@ -262,15 +266,16 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
         flex: 1;
     }
     .ios-popup {
-        border-radius: 12px;
+        border-radius: 16px;
     }
     #cellMenu {
-        gap: 8px;
-        padding: 8px 10px;      
+        gap: 6px;
+        padding: 6px 8px;      
     }
     .menu-option,
     .menu-reset {
-        width: 20px; height: 20px;
+        width: 16px; height: 16px;
         font-size: 12px;
+        border: 0.6px solid rgba(0,0,0,0.1);
     }
 }
