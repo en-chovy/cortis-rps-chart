@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CORTIS RPS 취향표</title>
-    <link rel="stylesheet" href="./styles.css?v=20260714-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260714-6" />
 </head>
 <body>
 
@@ -40,20 +40,39 @@
         <button class="btn-add-legend">+</button>
     </div>
 
-    <div class="table-shell">
-        <table id="rpsTable">
-            <thead>
-                <tr><th class="name-col"></th><th>마틴</th><th>제임스</th><th>주훈</th><th>성현</th><th>건호</th></tr>
-            </thead>
-            <tbody>
-                <tr><th class="name-col">마틴</th><td class="empty-cell"></td><td class="paintable">젯틴</td><td class="paintable">훈틴</td><td class="paintable">셩띤</td><td class="paintable">껀틴</td></tr>
-                <tr><th class="name-col">제임스</th><td class="paintable">틴젯</td><td class="empty-cell"></td><td class="paintable">눟젯</td><td class="paintable">셩젯</td><td class="paintable">낭젯</td></tr>
-                <tr><th class="name-col">주훈</th><td class="paintable">틴훈</td><td class="paintable">젯쮸</td><td class="empty-cell"></td><td class="paintable">셩쮼</td><td class="paintable">낭쮼</td></tr>
-                <tr><th class="name-col">성현</th><td class="paintable">틴셩</td><td class="paintable">젯셩</td><td class="paintable">쮸엄</td><td class="empty-cell"></td><td class="paintable">낭셩</td></tr>
-                <tr><th class="name-col">건호</th><td class="paintable">틴껀</td><td class="paintable">젬껀</td><td class="paintable">쮸건</td><td class="paintable">엄껀</td><td class="empty-cell"></td></tr>
-            </tbody>
-        </table>
+    <div class="chart-frame">
+        <div class="table-shell">
+            <table id="rpsTable">
+                <thead>
+                    <tr><th class="name-col"></th><th>마틴</th><th>제임스</th><th>주훈</th><th>성현</th><th>건호</th></tr>
+                </thead>
+                <tbody>
+                    <tr><th class="name-col">마틴</th><td class="empty-cell"></td><td class="paintable">젯틴</td><td class="paintable">훈틴</td><td class="paintable">셩띤</td><td class="paintable">껀틴</td></tr>
+                    <tr><th class="name-col">제임스</th><td class="paintable">틴젯</td><td class="empty-cell"></td><td class="paintable">눟젯</td><td class="paintable">셩젯</td><td class="paintable">낭젯</td></tr>
+                    <tr><th class="name-col">주훈</th><td class="paintable">틴훈</td><td class="paintable">젯쮸</td><td class="empty-cell"></td><td class="paintable">셩쮼</td><td class="paintable">낭쮼</td></tr>
+                    <tr><th class="name-col">성현</th><td class="paintable">틴셩</td><td class="paintable">젯셩</td><td class="paintable">쮸엄</td><td class="empty-cell"></td><td class="paintable">낭셩</td></tr>
+                    <tr><th class="name-col">건호</th><td class="paintable">틴껀</td><td class="paintable">젬껀</td><td class="paintable">쮸건</td><td class="paintable">엄껀</td><td class="empty-cell"></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <time class="chart-timestamp" id="chartTimestamp" hidden></time>
     </div>
+
+    <section class="export-panel" aria-label="이미지 저장 설정">
+        <label class="timestamp-toggle" for="timestampToggle">
+            <input class="timestamp-toggle-input" id="timestampToggle" type="checkbox">
+            <span class="timestamp-toggle-control" aria-hidden="true"></span>
+            <span>이미지에 날짜 표시</span>
+        </label>
+        <button class="btn-save-image" id="saveImageButton" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                <rect x="3.25" y="4.25" width="17.5" height="15.5" rx="3.25"></rect>
+                <circle cx="8.25" cy="9" r="1.75"></circle>
+                <path d="M4.5 17.25l4.25-4.25a1.5 1.5 0 0 1 2.12 0l1.63 1.63 1.88-1.88a1.5 1.5 0 0 1 2.12 0l3 3"></path>
+            </svg>
+            <span>이미지 저장</span>
+        </button>
+    </section>
 
     <footer class="site-footer">
         <span>&copy; 2026 en-chovy</span>
@@ -122,7 +141,7 @@
     </div>
 </div>
 
-<script src="./app.js"></script>
+<script src="./app.js?v=20260714-6"></script>
 
 </body>
 </html>
