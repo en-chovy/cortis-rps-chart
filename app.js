@@ -13,6 +13,7 @@ let pendingDeleteItemId = null;
 
 let tempH = 0, tempS = 100, tempV = 100, tempA = 0.5;
 let unifiedEditingId = null;
+let popupRepositionFrame = null;
 function isMobile() {
     return window.innerWidth <= 768;
 }
@@ -95,11 +96,49 @@ function positionPopup(popup, target, isBelow) {
   if (!container) return;
 
   const containerRect = container.getBoundingClientRect();
+  const targetCenterX = rect.left + rect.width / 2;
+  let popupLeft = targetCenterX - containerRect.left - popup.offsetWidth / 2;
 
-  popup.style.left = (rect.left - containerRect.left + rect.width / 2 - popup.offsetWidth / 2) + 'px';
+  if (popup.id === 'cellMenu' && isMobile()) {
+    const viewportPadding = 8;
+    const idealViewportLeft = targetCenterX - popup.offsetWidth / 2;
+    const maxViewportLeft = Math.max(
+      viewportPadding,
+      window.innerWidth - popup.offsetWidth - viewportPadding
+    );
+    const popupViewportLeft = Math.min(
+      Math.max(idealViewportLeft, viewportPadding),
+      maxViewportLeft
+    );
+    const arrowInset = 14;
+    const arrowLeft = Math.min(
+      Math.max(targetCenterX - popupViewportLeft, arrowInset),
+      popup.offsetWidth - arrowInset
+    );
+
+    popupLeft = popupViewportLeft - containerRect.left;
+    popup.style.setProperty('--arrow-left', `${arrowLeft}px`);
+  } else {
+    popup.style.removeProperty('--arrow-left');
+  }
+
+  popup.style.left = popupLeft + 'px';
   popup.style.top = isBelow
     ? (rect.bottom - containerRect.top + 10) + 'px'
     : (rect.top - containerRect.top - popup.offsetHeight - 10) + 'px';
+}
+
+function scheduleOpenCellMenuPosition() {
+  if (popupRepositionFrame !== null) cancelAnimationFrame(popupRepositionFrame);
+
+  popupRepositionFrame = requestAnimationFrame(() => {
+    popupRepositionFrame = null;
+
+    const menu = document.getElementById('cellMenu');
+    if (!activeCell?.isConnected || !menu || menu.style.display === 'none') return;
+
+    positionPopup(menu, activeCell, false);
+  });
 }
 
 function openVisualPicker(target, id) {
@@ -503,6 +542,9 @@ function initGlobalInteraction() {
   document.addEventListener('dragstart', (e) => {
     if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') e.preventDefault();
   });
+
+  window.addEventListener('resize', scheduleOpenCellMenuPosition);
+  window.visualViewport?.addEventListener('resize', scheduleOpenCellMenuPosition);
 }
 
 // Boot (script is loaded at end of body, but keep safe)
