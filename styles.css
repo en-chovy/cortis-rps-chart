@@ -62,6 +62,14 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
 #rpsTable thead tr:first-child > *{ border-top: 0; background-color: #636366; color: white; font-weight: 600; }        
 .paintable { cursor: pointer; transition: background-color 0.2s; background-color: transparent; }
 
+/* --- FOOTER --- */
+.site-footer {
+    display: flex; justify-content: center; align-items: center; flex-wrap: wrap;
+    gap: 8px; margin-top: 28px; color: #8e8e93; font-size: 13px;
+}
+.site-footer a { color: inherit; text-decoration-color: #c7c7cc; text-underline-offset: 3px; }
+.site-footer a:hover, .site-footer a:focus-visible { color: #3a3a3c; }
+
 /* --- POPUP (iOS STYLE) --- */
 .ios-popup {
     display: none; position: absolute; background: var(--ios-bg);
@@ -147,6 +155,11 @@ h1 { font-size: 22px; font-weight: 600; margin: 32px 0; letter-spacing: -0.5px; 
     }
     .legend-item {
         gap: 5px;
+    }
+    .site-footer {
+        gap: 6px;
+        margin-top: 20px;
+        font-size: clamp(10px, 2.4vw, 13px);
     }
     .circle-display {
         width: clamp(14px, 2.6vw, 28px);
