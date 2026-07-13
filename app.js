@@ -14,6 +14,7 @@ let pendingDeleteItemId = null;
 let tempH = 0, tempS = 100, tempV = 100, tempA = 0.5;
 let unifiedEditingId = null;
 let popupRepositionFrame = null;
+let lastViewportWidth = window.innerWidth;
 function isMobile() {
     return window.innerWidth <= 480;
 }
@@ -88,6 +89,37 @@ function closeAllPopups() {
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = 'none';
+}
+
+function closeAllEditingUI() {
+  closeAllPopups();
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.style.display = 'none';
+  });
+
+  if (popupRepositionFrame !== null) {
+    cancelAnimationFrame(popupRepositionFrame);
+    popupRepositionFrame = null;
+  }
+
+  activeCell = null;
+  editingId = null;
+  unifiedEditingId = null;
+  currentLabelId = '';
+  pendingDeleteItemId = null;
+  isAdding = false;
+}
+
+function handleViewportResize() {
+  const nextViewportWidth = window.innerWidth;
+
+  if (Math.abs(nextViewportWidth - lastViewportWidth) >= 1) {
+    lastViewportWidth = nextViewportWidth;
+    closeAllEditingUI();
+    return;
+  }
+
+  scheduleOpenCellMenuPosition();
 }
 
 function positionPopup(popup, target, isBelow) {
@@ -547,8 +579,8 @@ function initGlobalInteraction() {
     if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') e.preventDefault();
   });
 
-  window.addEventListener('resize', scheduleOpenCellMenuPosition);
-  window.visualViewport?.addEventListener('resize', scheduleOpenCellMenuPosition);
+  window.addEventListener('resize', handleViewportResize);
+  window.visualViewport?.addEventListener('resize', handleViewportResize);
 }
 
 function getImageExportPreset() {
