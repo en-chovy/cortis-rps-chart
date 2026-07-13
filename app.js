@@ -15,12 +15,148 @@ let tempH = 0, tempS = 100, tempV = 100, tempA = 0.5;
 let unifiedEditingId = null;
 let popupRepositionFrame = null;
 let lastViewportWidth = window.innerWidth;
+let visualPickerSession = null;
+let unifiedEditBefore = null;
+let isImeComposing = false;
+
+const undoStack = [];
+const redoStack = [];
+const modalReturnFocus = new Map();
+const HISTORY_LIMIT = 100;
 function isMobile() {
     return window.innerWidth <= 480;
 }
 
 function needsConstrainedPopup() {
     return window.innerWidth <= 1024;
+}
+
+/* --- EDIT HISTORY --- */
+function createLegendElement({ id, name }) {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.id = `item-${id}`;
+
+  const display = document.createElement('div');
+  display.className = 'circle-display';
+  display.id = `disp-${id}`;
+  display.style.backgroundColor = `var(--color-${id}-a)`;
+
+  const label = document.createElement('span');
+  label.className = 'editable-label';
+  label.id = `label-${id}`;
+  label.textContent = name;
+
+  const deleteButton = document.createElement('button');
+  deleteButton.className = 'btn-delete-item';
+  deleteButton.type = 'button';
+  deleteButton.setAttribute('aria-label', `${name} 범례 삭제`);
+  deleteButton.textContent = '✕';
+
+  item.append(display, label, deleteButton);
+  return item;
+}
+
+function captureEditableState() {
+  const rootStyle = getComputedStyle(document.documentElement);
+  const colors = [];
+
+  for (let id = 1; id <= itemCount; id += 1) {
+    colors.push({
+      id,
+      hex: rootStyle.getPropertyValue(`--color-${id}`).trim(),
+      rgba: rootStyle.getPropertyValue(`--color-${id}-a`).trim()
+    });
+  }
+
+  return {
+    itemCount,
+    legends: [...document.querySelectorAll('.legend-item')].map(item => {
+      const id = Number(item.id.split('-')[1]);
+      return {
+        id,
+        name: document.getElementById(`label-${id}`)?.textContent ?? ''
+      };
+    }),
+    colors,
+    cells: [...document.querySelectorAll('.paintable')].map(cell => {
+      const color = cell.style.backgroundColor;
+      return color === 'transparent' ? '' : color;
+    })
+  };
+}
+
+function restoreEditableState(state) {
+  const root = document.documentElement;
+  const highestId = Math.max(itemCount, state.itemCount);
+
+  for (let id = 1; id <= highestId; id += 1) {
+    root.style.removeProperty(`--color-${id}`);
+    root.style.removeProperty(`--color-${id}-a`);
+  }
+
+  state.colors.forEach(({ id, hex, rgba }) => {
+    if (hex) root.style.setProperty(`--color-${id}`, hex);
+    if (rgba) root.style.setProperty(`--color-${id}-a`, rgba);
+  });
+
+  itemCount = state.itemCount;
+
+  const legendContainer = document.getElementById('legendContainer');
+  const addButton = legendContainer?.querySelector('.btn-add-legend');
+  legendContainer?.querySelectorAll('.legend-item').forEach(item => item.remove());
+  state.legends.forEach(legend => {
+    const item = createLegendElement(legend);
+    if (addButton) legendContainer.insertBefore(item, addButton);
+    else legendContainer?.appendChild(item);
+  });
+
+  document.querySelectorAll('.paintable').forEach((cell, index) => {
+    cell.style.backgroundColor = state.cells[index] ?? '';
+  });
+}
+
+function statesMatch(first, second) {
+  return JSON.stringify(first) === JSON.stringify(second);
+}
+
+function updateHistoryControls() {
+  const undoButton = document.getElementById('undoButton');
+  const redoButton = document.getElementById('redoButton');
+  if (undoButton) undoButton.disabled = undoStack.length === 0;
+  if (redoButton) redoButton.disabled = redoStack.length === 0;
+}
+
+function recordHistory(type, before, after = captureEditableState()) {
+  if (statesMatch(before, after)) return false;
+
+  undoStack.push({ type, before, after });
+  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+  redoStack.length = 0;
+  updateHistoryControls();
+  return true;
+}
+
+function commitMutation(type, mutate) {
+  const before = captureEditableState();
+  mutate();
+  recordHistory(type, before);
+}
+
+function undoEdit() {
+  const entry = undoStack.pop();
+  if (!entry) return;
+  restoreEditableState(entry.before);
+  redoStack.push(entry);
+  updateHistoryControls();
+}
+
+function redoEdit() {
+  const entry = redoStack.pop();
+  if (!entry) return;
+  restoreEditableState(entry.after);
+  undoStack.push(entry);
+  updateHistoryControls();
 }
 
 /* --- COLOR CONVERSION UTILS --- */
@@ -79,23 +215,75 @@ function updateColors() {
 }
 
 /* --- UI CONTROL (POPUP/MODAL) --- */
-function closeAllPopups() {
+function focusTrigger(trigger) {
+  let focusTarget = trigger?.isConnected ? trigger : null;
+
+  if (!focusTarget && trigger instanceof Element) {
+    if (trigger.id) focusTarget = document.getElementById(trigger.id);
+
+    if (!focusTarget) {
+      const itemId = trigger.closest('.legend-item')?.id;
+      if (itemId && trigger.matches('.circle-display, .editable-label, .btn-delete-item')) {
+        const selector = trigger.matches('.circle-display')
+          ? '.circle-display'
+          : trigger.matches('.editable-label')
+            ? '.editable-label'
+            : '.btn-delete-item';
+        focusTarget = document.querySelector(`#${itemId} ${selector}`);
+      }
+    }
+  }
+
+  if (!focusTarget) focusTarget = document.querySelector('.btn-add-legend');
+  if (!focusTarget) return;
+
+  if (!focusTarget.matches('button, input, select, textarea, a[href], [tabindex]')) {
+    focusTarget.tabIndex = -1;
+  }
+
+  requestAnimationFrame(() => focusTarget.focus({ preventScroll: true }));
+}
+
+function showModal(id, trigger) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modalReturnFocus.set(id, trigger);
+  modal.style.display = 'flex';
+}
+
+function closeVisualPicker({ commit = true, restoreFocus = true } = {}) {
   const visual = document.getElementById('visualPickerPopup');
-  const menu = document.getElementById('cellMenu');
+  const session = visualPickerSession;
+
   if (visual) visual.style.display = 'none';
+
+  if (session) {
+    if (commit) recordHistory('legend-color', session.before);
+    else restoreEditableState(session.before);
+    if (restoreFocus) focusTrigger(session.trigger);
+  }
+
+  visualPickerSession = null;
+  editingId = null;
+}
+
+function closeAllPopups(options = {}) {
+  const menu = document.getElementById('cellMenu');
+  closeVisualPicker(options);
   if (menu) menu.style.display = 'none';
 }
 
-function closeModal(id) {
+function closeModal(id, { restoreFocus = true } = {}) {
   const el = document.getElementById(id);
   if (el) el.style.display = 'none';
+  const trigger = modalReturnFocus.get(id);
+  modalReturnFocus.delete(id);
+  if (restoreFocus) focusTrigger(trigger);
 }
 
 function closeAllEditingUI() {
-  closeAllPopups();
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.style.display = 'none';
-  });
+  closeAllPopups({ commit: true, restoreFocus: false });
+  document.querySelectorAll('.modal-overlay').forEach(overlay => closeModal(overlay.id, { restoreFocus: false }));
 
   if (popupRepositionFrame !== null) {
     cancelAnimationFrame(popupRepositionFrame);
@@ -105,6 +293,8 @@ function closeAllEditingUI() {
   activeCell = null;
   editingId = null;
   unifiedEditingId = null;
+  unifiedEditBefore = null;
+  isImeComposing = false;
   currentLabelId = '';
   pendingDeleteItemId = null;
   isAdding = false;
@@ -178,8 +368,12 @@ function scheduleOpenCellMenuPosition() {
 }
 
 function openVisualPicker(target, id) {
-  closeAllPopups();
+  closeAllPopups({ commit: true, restoreFocus: false });
   editingId = Number(id);
+  visualPickerSession = {
+    before: captureEditableState(),
+    trigger: target
+  };
 
   const rootStyle = getComputedStyle(document.documentElement);
   const hexColor = rootStyle.getPropertyValue(`--color-${id}`).trim();
@@ -228,9 +422,10 @@ function updateUnifiedColorsPreview() {
     }
 }
 
-function openUnifiedModal(id) {
-    closeAllPopups();
+function openUnifiedModal(id, trigger) {
+    closeAllPopups({ commit: true, restoreFocus: false });
     unifiedEditingId = id;
+    unifiedEditBefore = captureEditableState();
     const rootStyle = getComputedStyle(document.documentElement);
     
     const labelEl = document.getElementById(`label-${id}`);
@@ -250,7 +445,7 @@ function openUnifiedModal(id) {
         document.getElementById('unifiedAlphaSlider').value = tempA;
     }
 
-    document.getElementById('unifiedModalOverlay').style.display = 'flex';
+    showModal('unifiedModalOverlay', trigger);
     
     requestAnimationFrame(() => {
         const cursor = document.getElementById('unifiedPickerCursor');
@@ -269,14 +464,22 @@ function saveUnified() {
     const val = document.getElementById('unifiedNameInput').value.trim();
     if (!val) return;
 
+    const before = unifiedEditBefore ?? captureEditableState();
     const label = document.getElementById(`label-${unifiedEditingId}`);
-    if (label) label.innerText = val;
+    if (label) {
+      label.innerText = val;
+      label.closest('.legend-item')?.querySelector('.btn-delete-item')?.setAttribute('aria-label', `${val} 범례 삭제`);
+    }
 
     const [r, g, b] = hsvToRgb(Number(tempH), Number(tempS), Number(tempV));
     const hex = rgbToHex(r, g, b);
     document.documentElement.style.setProperty(`--color-${unifiedEditingId}`, hex);
     document.documentElement.style.setProperty(`--color-${unifiedEditingId}-a`, `rgba(${r}, ${g}, ${b}, ${tempA})`);
+    recordHistory('legend-edit', before);
 
+    unifiedEditBefore = null;
+    unifiedEditingId = null;
+    isImeComposing = false;
     closeModal('unifiedModalOverlay');
 }
 
@@ -327,62 +530,97 @@ function initUnifiedColorPicker() {
 }
 
 /* --- LEGEND MODAL LOGIC --- */
-function openNameModal(labelDomId) {
+function openNameModal(labelDomId, trigger) {
   isAdding = false;
   currentLabelId = labelDomId;
 
   document.getElementById('modalTitle').innerText = "이름 변경";
-  document.getElementById('nameInput').value = document.getElementById(labelDomId).innerText;
-  document.getElementById('nameModalOverlay').style.display = 'flex';
+  const input = document.getElementById('nameInput');
+  input.value = document.getElementById(labelDomId).innerText;
+  showModal('nameModalOverlay', trigger);
+  requestAnimationFrame(() => input.focus());
 }
 
-function openAddModal() {
+function openAddModal(trigger) {
   isAdding = true;
 
   document.getElementById('modalTitle').innerText = "새 범례 추가";
-  document.getElementById('nameInput').value = "";
-  document.getElementById('nameModalOverlay').style.display = 'flex';
+  const input = document.getElementById('nameInput');
+  input.value = "";
+  showModal('nameModalOverlay', trigger);
+  requestAnimationFrame(() => input.focus());
 }
 
 function saveName() {
   const val = document.getElementById('nameInput').value.trim();
   if (!val) return;
 
-  if (isAdding) {
-    itemCount += 1;
+  commitMutation(isAdding ? 'legend-add' : 'legend-name', () => {
+    if (isAdding) {
+      itemCount += 1;
 
-    // default colors
-    document.documentElement.style.setProperty(`--color-${itemCount}`, '#cccccc');
-    document.documentElement.style.setProperty(`--color-${itemCount}-a`, 'rgba(204,204,204,0.5)');
+      document.documentElement.style.setProperty(`--color-${itemCount}`, '#cccccc');
+      document.documentElement.style.setProperty(`--color-${itemCount}-a`, 'rgba(204,204,204,0.5)');
 
-    // create legend item WITHOUT inline onclick (handled by event delegation)
-    const div = document.createElement('div');
-    div.className = 'legend-item';
-    div.id = `item-${itemCount}`;
-    div.innerHTML = `
-      <div class="circle-display" id="disp-${itemCount}" style="background-color: var(--color-${itemCount}-a);"></div>
-      <span class="editable-label" id="label-${itemCount}">${val}</span>
-      <button class="btn-delete-item" type="button">✕</button>
-    `.trim();
-
-    const legendContainer = document.getElementById('legendContainer');
-    const addBtn = legendContainer?.querySelector('.btn-add-legend');
-    if (legendContainer && addBtn) {
-      legendContainer.insertBefore(div, addBtn);
-    } else if (legendContainer) {
-      legendContainer.appendChild(div);
+      const item = createLegendElement({ id: itemCount, name: val });
+      const legendContainer = document.getElementById('legendContainer');
+      const addButton = legendContainer?.querySelector('.btn-add-legend');
+      if (addButton) legendContainer.insertBefore(item, addButton);
+      else legendContainer?.appendChild(item);
+    } else {
+      const label = document.getElementById(currentLabelId);
+      if (label) {
+        label.innerText = val;
+        label.closest('.legend-item')?.querySelector('.btn-delete-item')?.setAttribute('aria-label', `${val} 범례 삭제`);
+      }
     }
-  } else {
-    const label = document.getElementById(currentLabelId);
-    if (label) label.innerText = val;
-  }
+  });
 
+  isAdding = false;
+  currentLabelId = '';
+  isImeComposing = false;
   closeModal('nameModalOverlay');
 }
 
-function openDeleteConfirm(itemId) {
+function cancelNameModal() {
+  isImeComposing = false;
+  isAdding = false;
+  currentLabelId = '';
+  closeModal('nameModalOverlay');
+}
+
+function openDeleteConfirm(itemId, trigger) {
   pendingDeleteItemId = itemId;
-  document.getElementById('deleteModalOverlay').style.display = 'flex';
+  showModal('deleteModalOverlay', trigger);
+}
+
+function cancelDelete() {
+  pendingDeleteItemId = null;
+  closeModal('deleteModalOverlay');
+}
+
+function confirmDelete() {
+  if (!pendingDeleteItemId) return;
+  const itemId = pendingDeleteItemId;
+  commitMutation('legend-delete', () => document.getElementById(itemId)?.remove());
+  pendingDeleteItemId = null;
+  closeModal('deleteModalOverlay');
+}
+
+function cancelUnified() {
+  isImeComposing = false;
+  unifiedEditingId = null;
+  unifiedEditBefore = null;
+  closeModal('unifiedModalOverlay');
+}
+
+function deleteUnifiedLegend() {
+  if (!unifiedEditingId) return;
+  const itemId = `item-${unifiedEditingId}`;
+  commitMutation('legend-delete', () => document.getElementById(itemId)?.remove());
+  unifiedEditingId = null;
+  unifiedEditBefore = null;
+  closeModal('unifiedModalOverlay');
 }
 
 /* --- INTERACTION HANDLERS --- */
@@ -400,7 +638,11 @@ function openCellMenu(target) {
     opt.className = 'menu-option';
     opt.style.backgroundColor = `var(--color-${id}-a)`;
     opt.addEventListener('click', () => {
-      if (activeCell) activeCell.style.backgroundColor = `var(--color-${id}-a)`;
+      if (activeCell) {
+        commitMutation('cell-paint', () => {
+          activeCell.style.backgroundColor = `var(--color-${id}-a)`;
+        });
+      }
       closeAllPopups();
     });
     menu.appendChild(opt);
@@ -410,7 +652,11 @@ function openCellMenu(target) {
   reset.className = 'menu-reset';
   reset.innerText = '✕';
   reset.addEventListener('click', () => {
-    if (activeCell) activeCell.style.backgroundColor = 'transparent';
+    if (activeCell) {
+      commitMutation('cell-clear', () => {
+        activeCell.style.backgroundColor = '';
+      });
+    }
     closeAllPopups();
   });
   menu.appendChild(reset);
@@ -498,7 +744,7 @@ function initLegendDelegation() {
   legendContainer.addEventListener('click', (e) => {
     const addBtn = e.target.closest('.btn-add-legend');
     if (addBtn && legendContainer.contains(addBtn)) {
-      openAddModal();
+      openAddModal(addBtn);
       return;
     }
 
@@ -507,11 +753,11 @@ function initLegendDelegation() {
         const id = Number(item.id.split('-')[1]);
         
         if (isMobile()) {
-            openUnifiedModal(id);
+            openUnifiedModal(id, e.target);
         } else {
             if (e.target.closest('.circle-display')) openVisualPicker(e.target, id);
-            else if (e.target.closest('.editable-label')) openNameModal(`label-${id}`);
-            else if (e.target.closest('.btn-delete-item')) openDeleteConfirm(item.id);
+            else if (e.target.closest('.editable-label')) openNameModal(`label-${id}`, e.target);
+            else if (e.target.closest('.btn-delete-item')) openDeleteConfirm(item.id, e.target);
         }
     }
   });
@@ -520,37 +766,128 @@ function initLegendDelegation() {
 function initModalButtons() {
   const nameOverlay = document.getElementById('nameModalOverlay');
   if (nameOverlay) {
-    nameOverlay.querySelector('.btn-cancel')?.addEventListener('click', () => closeModal('nameModalOverlay'));
+    nameOverlay.querySelector('.btn-cancel')?.addEventListener('click', cancelNameModal);
     nameOverlay.querySelector('.btn-save')?.addEventListener('click', saveName);
   }
 
   const delOverlay = document.getElementById('deleteModalOverlay');
   if (delOverlay) {
-    delOverlay.querySelector('.btn-cancel')?.addEventListener('click', () => { pendingDeleteItemId = null; closeModal('deleteModalOverlay'); });
-    document.getElementById('confirmDelBtn')?.addEventListener('click', () => {
-      if (!pendingDeleteItemId) return;
-      document.getElementById(pendingDeleteItemId)?.remove();
-      pendingDeleteItemId = null;
-      closeModal('deleteModalOverlay');
-    });
+    delOverlay.querySelector('.btn-cancel')?.addEventListener('click', cancelDelete);
+    document.getElementById('confirmDelBtn')?.addEventListener('click', confirmDelete);
   }
 
   const picker = document.getElementById('visualPickerPopup');
-  picker?.querySelector('.btn-done')?.addEventListener('click', closeAllPopups);
+  picker?.querySelector('.btn-done')?.addEventListener('click', () => closeAllPopups({ commit: true }));
   document.getElementById('unifiedSaveBtn')?.addEventListener('click', saveUnified);
-  document.getElementById('unifiedDeleteBtn')?.addEventListener('click', () => {
-      if (!unifiedEditingId) return;
-      document.getElementById(`item-${unifiedEditingId}`)?.remove();
-      closeModal('unifiedModalOverlay');
-  });
+  document.getElementById('unifiedCancelBtn')?.addEventListener('click', cancelUnified);
+  document.getElementById('unifiedDeleteBtn')?.addEventListener('click', deleteUnifiedLegend);
 
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('mousedown', (e) => {
           if (e.target === overlay) {
-              closeModal(overlay.id);
+              if (overlay.id === 'nameModalOverlay') cancelNameModal();
+              else if (overlay.id === 'deleteModalOverlay') cancelDelete();
+              else if (overlay.id === 'unifiedModalOverlay') cancelUnified();
           }
       });
   });
+}
+
+function isVisible(element) {
+  return Boolean(element && getComputedStyle(element).display !== 'none');
+}
+
+function isTextEditingTarget(target) {
+  if (!(target instanceof Element)) return false;
+  if (target.closest('textarea, [contenteditable="true"]')) return true;
+
+  const input = target.closest('input');
+  return Boolean(input && ['text', 'search', 'email', 'url', 'tel', 'password'].includes(input.type));
+}
+
+function isImeEnter(event) {
+  return event.key === 'Enter' && (event.isComposing || isImeComposing || event.keyCode === 229);
+}
+
+function initKeyboardInteraction() {
+  const nameInput = document.getElementById('nameInput');
+  const unifiedNameInput = document.getElementById('unifiedNameInput');
+  [nameInput, unifiedNameInput].forEach(input => {
+    input?.addEventListener('compositionstart', () => { isImeComposing = true; });
+    input?.addEventListener('compositionend', () => { isImeComposing = false; });
+  });
+
+  document.addEventListener('keydown', event => {
+    const nameOverlay = document.getElementById('nameModalOverlay');
+    const deleteOverlay = document.getElementById('deleteModalOverlay');
+    const unifiedOverlay = document.getElementById('unifiedModalOverlay');
+    const visualPicker = document.getElementById('visualPickerPopup');
+
+    if (isVisible(nameOverlay)) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelNameModal();
+      } else if (event.key === 'Enter' && !isImeEnter(event)) {
+        event.preventDefault();
+        saveName();
+      }
+      return;
+    }
+
+    if (isVisible(deleteOverlay)) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelDelete();
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        confirmDelete();
+      }
+      return;
+    }
+
+    if (isVisible(unifiedOverlay)) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelUnified();
+      } else if (event.key === 'Enter' && !isImeEnter(event)) {
+        event.preventDefault();
+        saveUnified();
+      }
+      return;
+    }
+
+    if (isVisible(visualPicker)) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeVisualPicker({ commit: false });
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        closeVisualPicker({ commit: true });
+      }
+      return;
+    }
+
+    if (isTextEditingTarget(event.target)) return;
+
+    const key = event.key.toLowerCase();
+    const commandKey = event.metaKey || event.ctrlKey;
+    const undoShortcut = commandKey && key === 'z' && !event.shiftKey;
+    const redoShortcut = commandKey && ((key === 'z' && event.shiftKey) || (event.ctrlKey && key === 'y'));
+
+    if (undoShortcut) {
+      event.preventDefault();
+      undoEdit();
+    } else if (redoShortcut) {
+      event.preventDefault();
+      redoEdit();
+    }
+  });
+}
+
+function initHistoryControls() {
+  document.getElementById('undoButton')?.addEventListener('click', undoEdit);
+  document.getElementById('redoButton')?.addEventListener('click', redoEdit);
+  updateHistoryControls();
 }
 
 function initGlobalInteraction() {
@@ -848,5 +1185,7 @@ function initExportControls() {
   initLegendDelegation();
   initModalButtons();
   initGlobalInteraction();
+  initKeyboardInteraction();
+  initHistoryControls();
   initExportControls();
 })();

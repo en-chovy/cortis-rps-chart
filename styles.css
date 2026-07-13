@@ -108,6 +108,28 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 .btn-save-image:focus-visible { outline: 3px solid rgba(99, 99, 102, 0.18); outline-offset: 3px; }
 .btn-save-image:disabled { color: #8e8e93; background: #f2f2f7; cursor: wait; opacity: 0.8; transform: none; }
 
+.history-controls {
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+    margin-top: 16px;
+}
+.history-button {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; padding: 0; border: 1px solid #d1d1d6; border-radius: 10px;
+    background: #fff; color: #636366; cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+.history-button svg {
+    width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.6;
+    stroke-linecap: round; stroke-linejoin: round;
+}
+.history-button:hover { background: #f2f2f7; border-color: #c7c7cc; color: #3a3a3c; }
+.history-button:active { background: #e5e5ea; transform: scale(0.95); }
+.history-button:focus-visible { outline: 3px solid rgba(99, 99, 102, 0.18); outline-offset: 2px; }
+.history-button:disabled {
+    background: #fff; border-color: #e5e5ea; color: #c7c7cc;
+    cursor: default; opacity: 0.7; transform: none;
+}
+
 .image-export-frame {
     position: fixed; top: 0; left: -10000px; z-index: -1;
     box-sizing: content-box; overflow: visible; background: #fff; text-align: center;
@@ -235,6 +257,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     }
     .timestamp-toggle { font-size: 12px; }
     .btn-save-image { min-height: 38px; font-size: 13px; }
+    .history-controls { margin-top: 14px; }
+    .history-button { width: 32px; height: 32px; border-radius: 9px; }
     .circle-display {
         width: clamp(16px, 2.8vw, 24px);
         height: clamp(16px, 2.8vw, 24px);
