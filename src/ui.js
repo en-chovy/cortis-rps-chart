@@ -83,11 +83,11 @@ function closeAllEditingUI() {
   }
 
   state.activeCell = null;
+  state.activeCellIndex = null;
   state.editingId = null;
   state.unifiedEditingId = null;
-  state.unifiedEditBefore = null;
   state.isImeComposing = false;
-  state.currentLabelId = '';
+  state.nameEditingId = null;
   state.pendingDeleteItemId = null;
   state.isAdding = false;
 }

@@ -22,4 +22,3 @@ export function createLegendElement({ id, name }) {
   item.append(display, label, deleteButton);
   return item;
 }
-

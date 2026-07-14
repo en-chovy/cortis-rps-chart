@@ -1,17 +1,14 @@
 export const state = {
   activeCell: null,
+  activeCellIndex: null,
   editingId: null,
   isAdding: false,
-  currentLabelId: '',
-  itemCount: 5,
-  currentColor: { h: 0, s: 100, v: 100, a: 0.5 },
+  nameEditingId: null,
   pendingDeleteItemId: null,
-  unifiedColor: { h: 0, s: 100, v: 100, a: 0.5 },
   unifiedEditingId: null,
   popupRepositionFrame: null,
   lastViewportWidth: globalThis.innerWidth ?? 0,
   visualPickerSession: null,
-  unifiedEditBefore: null,
   isImeComposing: false
 };
 

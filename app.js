@@ -1,15 +1,25 @@
-import { getAlphaFromRgba, hexToRgb, rgbToHsv, toColorValues } from './src/color.js';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js';
+import { createColorPicker } from './src/color-picker.js';
 import { initExportControls } from './src/export.js';
 import {
   captureEditableState,
   commitMutation,
+  configureHistory,
   initHistoryControls,
-  recordHistory,
   redoEdit,
-  restoreEditableState,
   undoEdit
 } from './src/history.js';
-import { createLegendElement } from './src/legend-dom.js';
+import {
+  addLegend,
+  deleteLegend,
+  getEditableState,
+  getLegend,
+  getLegendColor,
+  paintCell,
+  renameLegend,
+  setLegendColor
+} from './src/model.js';
+import { initializeCells, renderApp, renderColors } from './src/render.js';
 import { state } from './src/state.js';
 import {
   closeAllPopups,
@@ -20,29 +30,49 @@ import {
   showModal
 } from './src/ui.js';
 
+let desktopPicker = null;
+let unifiedPicker = null;
+
 function isMobile() {
   return window.innerWidth <= 480;
 }
 
-function updateColors() {
-  if (state.editingId == null) return;
-
-  const { r, g, b, hex, rgba } = toColorValues(state.currentColor);
-
-  document.documentElement.style.setProperty(`--color-${state.editingId}`, hex);
-  document.documentElement.style.setProperty(`--color-${state.editingId}-a`, rgba);
-
-  const sbArea = document.getElementById('sbArea');
-  if (sbArea) sbArea.style.backgroundColor = `hsl(${state.currentColor.h}, 100%, 50%)`;
-  
-  const alphaSlider = document.getElementById('alphaSlider');
-  if (alphaSlider) {
-      alphaSlider.style.background = `linear-gradient(to right, rgba(${r},${g},${b},0), rgba(${r},${g},${b},1)), repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 14px 14px`;
-  }
+function toPickerColor({ hex, alpha }) {
+  const [r, g, b] = hexToRgb(hex);
+  const [h, s, v] = rgbToHsv(r, g, b);
+  return { h, s, v, a: alpha };
 }
 
-/* --- LEGEND EDITING --- */
+function updateLegendFromPicker(id, pickerColor) {
+  const { hex } = toColorValues(pickerColor);
+  setLegendColor(id, { hex, alpha: pickerColor.a });
+}
+
+function initColorPickers() {
+  desktopPicker = createColorPicker({
+    area: document.getElementById('sbArea'),
+    hueSlider: document.getElementById('hueSlider'),
+    alphaSlider: document.getElementById('alphaSlider'),
+    cursor: document.getElementById('pickerCursor'),
+    onChange: color => {
+      if (state.editingId == null) return;
+      updateLegendFromPicker(state.editingId, color);
+      renderColors();
+    }
+  });
+
+  unifiedPicker = createColorPicker({
+    area: document.getElementById('unifiedSbArea'),
+    hueSlider: document.getElementById('unifiedHueSlider'),
+    alphaSlider: document.getElementById('unifiedAlphaSlider'),
+    cursor: document.getElementById('unifiedPickerCursor')
+  });
+}
+
 function openVisualPicker(target, id) {
+  const color = getLegendColor(id);
+  if (!color || !desktopPicker) return;
+
   closeAllPopups({ commit: true, restoreFocus: false });
   state.editingId = Number(id);
   state.visualPickerSession = {
@@ -50,206 +80,74 @@ function openVisualPicker(target, id) {
     trigger: target
   };
 
-  const rootStyle = getComputedStyle(document.documentElement);
-  const hexColor = rootStyle.getPropertyValue(`--color-${id}`).trim();
-  const rgbaColor = rootStyle.getPropertyValue(`--color-${id}-a`).trim();
-
-  if (hexColor) {
-      const [r, g, b] = hexToRgb(hexColor);
-      const [h, s, v] = rgbToHsv(r, g, b);
-      state.currentColor.h = h;
-      state.currentColor.s = s;
-      state.currentColor.v = v;
-
-      state.currentColor.a = getAlphaFromRgba(rgbaColor);
-
-      const hueSlider = document.getElementById('hueSlider');
-      if (hueSlider) hueSlider.value = state.currentColor.h;
-      const alphaSlider = document.getElementById('alphaSlider');
-      if (alphaSlider) alphaSlider.value = state.currentColor.a;
-  }
-  
   const popup = document.getElementById('visualPickerPopup');
   positionPopup(popup, target, true);
-
-  const sbArea = document.getElementById('sbArea');
-  const cursor = document.getElementById('pickerCursor');
-  if (sbArea && cursor) {
-      const rect = sbArea.getBoundingClientRect();
-      const x = (state.currentColor.s / 100) * rect.width;
-      const y = ((100 - state.currentColor.v) / 100) * rect.height;
-      cursor.style.left = x + 'px';
-      cursor.style.top = y + 'px';
-  }
-
-  updateColors();
-}
-
-function updateUnifiedColorsPreview() {
-    const { r, g, b } = toColorValues(state.unifiedColor);
-    const sbArea = document.getElementById('unifiedSbArea');
-    if (sbArea) sbArea.style.backgroundColor = `hsl(${state.unifiedColor.h}, 100%, 50%)`;
-    
-    const alphaSlider = document.getElementById('unifiedAlphaSlider');
-    if (alphaSlider) {
-        alphaSlider.style.background = `linear-gradient(to right, rgba(${r},${g},${b},0), rgba(${r},${g},${b},1)), repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 14px 14px`;
-    }
+  desktopPicker.setValue(toPickerColor(color));
 }
 
 function openUnifiedModal(id, trigger) {
-    closeAllPopups({ commit: true, restoreFocus: false });
-    state.unifiedEditingId = id;
-    state.unifiedEditBefore = captureEditableState();
-    const rootStyle = getComputedStyle(document.documentElement);
-    
-    const labelEl = document.getElementById(`label-${id}`);
-    document.getElementById('unifiedNameInput').value = labelEl ? labelEl.innerText : '';
+  const legend = getLegend(id);
+  const color = getLegendColor(id);
+  if (!legend || !color || !unifiedPicker) return;
 
-    const hexColor = rootStyle.getPropertyValue(`--color-${id}`).trim();
-    const rgbaColor = rootStyle.getPropertyValue(`--color-${id}-a`).trim();
-
-    if (hexColor) {
-        const [r, g, b] = hexToRgb(hexColor);
-        const [h, s, v] = rgbToHsv(r, g, b);
-        state.unifiedColor.h = h; state.unifiedColor.s = s; state.unifiedColor.v = v;
-        state.unifiedColor.a = getAlphaFromRgba(rgbaColor);
-
-        document.getElementById('unifiedHueSlider').value = state.unifiedColor.h;
-        document.getElementById('unifiedAlphaSlider').value = state.unifiedColor.a;
-    }
-
-    showModal('unifiedModalOverlay', trigger);
-    
-    requestAnimationFrame(() => {
-        const cursor = document.getElementById('unifiedPickerCursor');
-        const rect = document.getElementById('unifiedSbArea').getBoundingClientRect();
-        const x = (state.unifiedColor.s / 100) * rect.width;
-        const y = ((100 - state.unifiedColor.v) / 100) * rect.height;
-        if (cursor) {
-            cursor.style.left = x + 'px';
-            cursor.style.top = y + 'px';
-        }
-        updateUnifiedColorsPreview();
-    });
+  closeAllPopups({ commit: true, restoreFocus: false });
+  state.unifiedEditingId = Number(id);
+  document.getElementById('unifiedNameInput').value = legend.name;
+  showModal('unifiedModalOverlay', trigger);
+  unifiedPicker.setValue(toPickerColor(color));
 }
 
 function saveUnified() {
-    const val = document.getElementById('unifiedNameInput').value.trim();
-    if (!val) return;
+  const name = document.getElementById('unifiedNameInput').value.trim();
+  const id = state.unifiedEditingId;
+  if (!name || id == null || !unifiedPicker) return;
 
-    const before = state.unifiedEditBefore ?? captureEditableState();
-    const label = document.getElementById(`label-${state.unifiedEditingId}`);
-    if (label) {
-      label.innerText = val;
-      label.closest('.legend-item')?.querySelector('.btn-delete-item')?.setAttribute('aria-label', `${val} 범례 삭제`);
-    }
+  const pickerColor = unifiedPicker.getValue();
+  commitMutation('legend-edit', () => {
+    renameLegend(id, name);
+    updateLegendFromPicker(id, pickerColor);
+  });
 
-    const { hex, rgba } = toColorValues(state.unifiedColor);
-    document.documentElement.style.setProperty(`--color-${state.unifiedEditingId}`, hex);
-    document.documentElement.style.setProperty(`--color-${state.unifiedEditingId}-a`, rgba);
-    recordHistory('legend-edit', before);
-
-    state.unifiedEditBefore = null;
-    state.unifiedEditingId = null;
-    state.isImeComposing = false;
-    closeModal('unifiedModalOverlay');
+  state.unifiedEditingId = null;
+  state.isImeComposing = false;
+  closeModal('unifiedModalOverlay');
 }
 
-function initUnifiedColorPicker() {
-    const sbArea = document.getElementById('unifiedSbArea');
-    const hueSlider = document.getElementById('unifiedHueSlider');
-    const alphaSlider = document.getElementById('unifiedAlphaSlider');
+function openNameModal(id, trigger) {
+  const legend = getLegend(id);
+  if (!legend) return;
 
-    if (!sbArea || !hueSlider) return;
-
-    function handleSB(e) {
-        const rect = sbArea.getBoundingClientRect();
-        const cx = e.touches?.length ? e.touches[0].clientX : e.clientX;
-        const cy = e.touches?.length ? e.touches[0].clientY : e.clientY;
-
-        let x = Math.max(0, Math.min(rect.width, cx - rect.left));
-        let y = Math.max(0, Math.min(rect.height, cy - rect.top));
-
-        state.unifiedColor.s = (x / rect.width) * 100;
-        state.unifiedColor.v = 100 - (y / rect.height) * 100;
-
-        const cursor = document.getElementById('unifiedPickerCursor');
-        if (cursor) { cursor.style.left = x + 'px'; cursor.style.top = y + 'px'; }
-        updateUnifiedColorsPreview();
-    }
-
-    const attachDrag = (startEvent, moveEvent, endEvent) => {
-        sbArea.addEventListener(startEvent, (e) => {
-            if(startEvent === 'touchstart') e.preventDefault(); // 스크롤 방지
-            handleSB(e);
-            const move = (me) => handleSB(me);
-            const up = () => {
-                document.removeEventListener(moveEvent, move);
-                document.removeEventListener(endEvent, up);
-                if(startEvent === 'touchstart') document.removeEventListener('touchcancel', up);
-            };
-            document.addEventListener(moveEvent, move, { passive: false });
-            document.addEventListener(endEvent, up);
-            if(startEvent === 'touchstart') document.addEventListener('touchcancel', up);
-        }, { passive: false });
-    };
-
-    attachDrag('mousedown', 'mousemove', 'mouseup');
-    attachDrag('touchstart', 'touchmove', 'touchend');
-
-    hueSlider.addEventListener('input', (e) => { state.unifiedColor.h = e.target.value; updateUnifiedColorsPreview(); });
-    if (alphaSlider) alphaSlider.addEventListener('input', (e) => { state.unifiedColor.a = e.target.value; updateUnifiedColorsPreview(); });
-}
-
-/* --- LEGEND MODAL LOGIC --- */
-function openNameModal(labelDomId, trigger) {
   state.isAdding = false;
-  state.currentLabelId = labelDomId;
-
-  document.getElementById('modalTitle').innerText = "이름 변경";
+  state.nameEditingId = Number(id);
+  document.getElementById('modalTitle').textContent = '이름 변경';
   const input = document.getElementById('nameInput');
-  input.value = document.getElementById(labelDomId).innerText;
+  input.value = legend.name;
   showModal('nameModalOverlay', trigger);
   requestAnimationFrame(() => input.focus());
 }
 
 function openAddModal(trigger) {
   state.isAdding = true;
-
-  document.getElementById('modalTitle').innerText = "새 범례 추가";
+  state.nameEditingId = null;
+  document.getElementById('modalTitle').textContent = '새 범례 추가';
   const input = document.getElementById('nameInput');
-  input.value = "";
+  input.value = '';
   showModal('nameModalOverlay', trigger);
   requestAnimationFrame(() => input.focus());
 }
 
 function saveName() {
-  const val = document.getElementById('nameInput').value.trim();
-  if (!val) return;
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) return;
 
-  commitMutation(state.isAdding ? 'legend-add' : 'legend-name', () => {
-    if (state.isAdding) {
-      state.itemCount += 1;
-
-      document.documentElement.style.setProperty(`--color-${state.itemCount}`, '#cccccc');
-      document.documentElement.style.setProperty(`--color-${state.itemCount}-a`, 'rgba(204,204,204,0.5)');
-
-      const item = createLegendElement({ id: state.itemCount, name: val });
-      const legendContainer = document.getElementById('legendContainer');
-      const addButton = legendContainer?.querySelector('.btn-add-legend');
-      if (addButton) legendContainer.insertBefore(item, addButton);
-      else legendContainer?.appendChild(item);
-    } else {
-      const label = document.getElementById(state.currentLabelId);
-      if (label) {
-        label.innerText = val;
-        label.closest('.legend-item')?.querySelector('.btn-delete-item')?.setAttribute('aria-label', `${val} 범례 삭제`);
-      }
-    }
-  });
+  if (state.isAdding) {
+    commitMutation('legend-add', () => addLegend(name));
+  } else if (state.nameEditingId != null) {
+    commitMutation('legend-name', () => renameLegend(state.nameEditingId, name));
+  }
 
   state.isAdding = false;
-  state.currentLabelId = '';
+  state.nameEditingId = null;
   state.isImeComposing = false;
   closeModal('nameModalOverlay');
 }
@@ -257,12 +155,12 @@ function saveName() {
 function cancelNameModal() {
   state.isImeComposing = false;
   state.isAdding = false;
-  state.currentLabelId = '';
+  state.nameEditingId = null;
   closeModal('nameModalOverlay');
 }
 
-function openDeleteConfirm(itemId, trigger) {
-  state.pendingDeleteItemId = itemId;
+function openDeleteConfirm(id, trigger) {
+  state.pendingDeleteItemId = Number(id);
   showModal('deleteModalOverlay', trigger);
 }
 
@@ -272,9 +170,9 @@ function cancelDelete() {
 }
 
 function confirmDelete() {
-  if (!state.pendingDeleteItemId) return;
-  const itemId = state.pendingDeleteItemId;
-  commitMutation('legend-delete', () => document.getElementById(itemId)?.remove());
+  const id = state.pendingDeleteItemId;
+  if (id == null) return;
+  commitMutation('legend-delete', () => deleteLegend(id));
   state.pendingDeleteItemId = null;
   closeModal('deleteModalOverlay');
 }
@@ -282,53 +180,39 @@ function confirmDelete() {
 function cancelUnified() {
   state.isImeComposing = false;
   state.unifiedEditingId = null;
-  state.unifiedEditBefore = null;
   closeModal('unifiedModalOverlay');
 }
 
 function deleteUnifiedLegend() {
-  if (!state.unifiedEditingId) return;
-  const itemId = `item-${state.unifiedEditingId}`;
-  commitMutation('legend-delete', () => document.getElementById(itemId)?.remove());
+  const id = state.unifiedEditingId;
+  if (id == null) return;
+  commitMutation('legend-delete', () => deleteLegend(id));
   state.unifiedEditingId = null;
-  state.unifiedEditBefore = null;
   closeModal('unifiedModalOverlay');
 }
 
-/* --- INTERACTION HANDLERS --- */
 function openCellMenu(target) {
   closeAllPopups();
-
   const menu = document.getElementById('cellMenu');
-  if (!menu) return;
+  if (!menu || state.activeCellIndex == null) return;
+  menu.replaceChildren();
 
-  menu.innerHTML = '';
-
-  document.querySelectorAll('.legend-item').forEach(item => {
-    const id = Number(item.id.split('-')[1]);
-    const opt = document.createElement('div');
-    opt.className = 'menu-option';
-    opt.style.backgroundColor = `var(--color-${id}-a)`;
-    opt.addEventListener('click', () => {
-      if (state.activeCell) {
-        commitMutation('cell-paint', () => {
-          state.activeCell.style.backgroundColor = `var(--color-${id}-a)`;
-        });
-      }
+  getEditableState().legends.forEach(legend => {
+    const option = document.createElement('div');
+    option.className = 'menu-option';
+    option.style.backgroundColor = `var(--color-${legend.id}-a)`;
+    option.addEventListener('click', () => {
+      commitMutation('cell-paint', () => paintCell(state.activeCellIndex, legend.id));
       closeAllPopups();
     });
-    menu.appendChild(opt);
+    menu.appendChild(option);
   });
 
   const reset = document.createElement('div');
   reset.className = 'menu-reset';
-  reset.innerText = '✕';
+  reset.textContent = '✕';
   reset.addEventListener('click', () => {
-    if (state.activeCell) {
-      commitMutation('cell-clear', () => {
-        state.activeCell.style.backgroundColor = '';
-      });
-    }
+    commitMutation('cell-clear', () => paintCell(state.activeCellIndex, null));
     closeAllPopups();
   });
   menu.appendChild(reset);
@@ -336,132 +220,56 @@ function openCellMenu(target) {
   positionPopup(menu, target, false);
 }
 
-/* --- INIT / EVENT BINDINGS --- */
-function initColorPicker() {
-  const sbArea = document.getElementById('sbArea');
-  const hueSlider = document.getElementById('hueSlider');
-  const alphaSlider = document.getElementById('alphaSlider');
-
-  if (!sbArea || !hueSlider) return;
-
-  function getClientXY(e) {
-    if (e.touches?.length) {
-      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-    return { x: e.clientX, y: e.clientY };
-  }
-
-  function handleSB(e) {
-    const rect = sbArea.getBoundingClientRect();
-    const { x: cx, y: cy } = getClientXY(e);
-
-    let x = Math.max(0, Math.min(rect.width, cx - rect.left));
-    let y = Math.max(0, Math.min(rect.height, cy - rect.top));
-
-    state.currentColor.s = (x / rect.width) * 100;
-    state.currentColor.v = 100 - (y / rect.height) * 100;
-
-    const cursor = document.getElementById('pickerCursor');
-    if (cursor) {
-      cursor.style.left = x + 'px';
-      cursor.style.top = y + 'px';
-    }
-
-    updateColors();
-  }
-
-  // Mouse
-  sbArea.addEventListener('mousedown', (e) => {
-    handleSB(e);
-    const move = (me) => handleSB(me);
-    const up = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
-    };
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
-  });
-
-  // Touch
-  sbArea.addEventListener('touchstart', (e) => {
-    handleSB(e);
-    const move = (me) => handleSB(me);
-    const up = () => {
-      document.removeEventListener('touchmove', move);
-      document.removeEventListener('touchend', up);
-      document.removeEventListener('touchcancel', up);
-    };
-    document.addEventListener('touchmove', move, { passive: false });
-    document.addEventListener('touchend', up);
-    document.addEventListener('touchcancel', up);
-  }, { passive: false });
-
-  hueSlider.addEventListener('input', (e) => {
-    state.currentColor.h = e.target.value;
-    updateColors();
-  });
-
-  if (alphaSlider) {
-    alphaSlider.addEventListener('input', (e) => {
-      state.currentColor.a = e.target.value;
-      updateColors();
-    });
-  }
-}
-
 function initLegendDelegation() {
-  const legendContainer = document.getElementById('legendContainer');
-  if (!legendContainer) return;
+  const container = document.getElementById('legendContainer');
+  if (!container) return;
 
-  legendContainer.addEventListener('click', (e) => {
-    const addBtn = e.target.closest('.btn-add-legend');
-    if (addBtn && legendContainer.contains(addBtn)) {
-      openAddModal(addBtn);
+  container.addEventListener('click', event => {
+    const addButton = event.target.closest('.btn-add-legend');
+    if (addButton && container.contains(addButton)) {
+      openAddModal(addButton);
       return;
     }
 
-    const item = e.target.closest('.legend-item');
-    if (item && legendContainer.contains(item)) {
-        const id = Number(item.id.split('-')[1]);
-        
-        if (isMobile()) {
-            openUnifiedModal(id, e.target);
-        } else {
-            if (e.target.closest('.circle-display')) openVisualPicker(e.target, id);
-            else if (e.target.closest('.editable-label')) openNameModal(`label-${id}`, e.target);
-            else if (e.target.closest('.btn-delete-item')) openDeleteConfirm(item.id, e.target);
-        }
+    const item = event.target.closest('.legend-item');
+    if (!item || !container.contains(item)) return;
+    const id = Number(item.id.split('-')[1]);
+
+    if (isMobile()) {
+      openUnifiedModal(id, event.target);
+    } else if (event.target.closest('.circle-display')) {
+      openVisualPicker(event.target, id);
+    } else if (event.target.closest('.editable-label')) {
+      openNameModal(id, event.target);
+    } else if (event.target.closest('.btn-delete-item')) {
+      openDeleteConfirm(id, event.target);
     }
   });
 }
 
 function initModalButtons() {
   const nameOverlay = document.getElementById('nameModalOverlay');
-  if (nameOverlay) {
-    nameOverlay.querySelector('.btn-cancel')?.addEventListener('click', cancelNameModal);
-    nameOverlay.querySelector('.btn-save')?.addEventListener('click', saveName);
-  }
+  nameOverlay?.querySelector('.btn-cancel')?.addEventListener('click', cancelNameModal);
+  nameOverlay?.querySelector('.btn-save')?.addEventListener('click', saveName);
 
-  const delOverlay = document.getElementById('deleteModalOverlay');
-  if (delOverlay) {
-    delOverlay.querySelector('.btn-cancel')?.addEventListener('click', cancelDelete);
-    document.getElementById('confirmDelBtn')?.addEventListener('click', confirmDelete);
-  }
+  const deleteOverlay = document.getElementById('deleteModalOverlay');
+  deleteOverlay?.querySelector('.btn-cancel')?.addEventListener('click', cancelDelete);
+  document.getElementById('confirmDelBtn')?.addEventListener('click', confirmDelete);
 
-  const picker = document.getElementById('visualPickerPopup');
-  picker?.querySelector('.btn-done')?.addEventListener('click', () => closeAllPopups({ commit: true }));
+  document.querySelector('#visualPickerPopup .btn-done')?.addEventListener('click', () => (
+    closeAllPopups({ commit: true })
+  ));
   document.getElementById('unifiedSaveBtn')?.addEventListener('click', saveUnified);
   document.getElementById('unifiedCancelBtn')?.addEventListener('click', cancelUnified);
   document.getElementById('unifiedDeleteBtn')?.addEventListener('click', deleteUnifiedLegend);
 
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
-      overlay.addEventListener('mousedown', (e) => {
-          if (e.target === overlay) {
-              if (overlay.id === 'nameModalOverlay') cancelNameModal();
-              else if (overlay.id === 'deleteModalOverlay') cancelDelete();
-              else if (overlay.id === 'unifiedModalOverlay') cancelUnified();
-          }
-      });
+    overlay.addEventListener('pointerdown', event => {
+      if (event.target !== overlay) return;
+      if (overlay.id === 'nameModalOverlay') cancelNameModal();
+      else if (overlay.id === 'deleteModalOverlay') cancelDelete();
+      else if (overlay.id === 'unifiedModalOverlay') cancelUnified();
+    });
   });
 }
 
@@ -472,7 +280,6 @@ function isVisible(element) {
 function isTextEditingTarget(target) {
   if (!(target instanceof Element)) return false;
   if (target.closest('textarea, [contenteditable="true"]')) return true;
-
   const input = target.closest('input');
   return Boolean(input && ['text', 'search', 'email', 'url', 'tel', 'password'].includes(input.type));
 }
@@ -481,53 +288,40 @@ function isImeEnter(event) {
   return event.key === 'Enter' && (event.isComposing || state.isImeComposing || event.keyCode === 229);
 }
 
+function handleModalKeyboard(event, overlay, { cancel, save, allowIme = true }) {
+  if (!isVisible(overlay)) return false;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    cancel();
+  } else if (event.key === 'Enter' && (!allowIme || !isImeEnter(event))) {
+    event.preventDefault();
+    save();
+  }
+  return true;
+}
+
 function initKeyboardInteraction() {
-  const nameInput = document.getElementById('nameInput');
-  const unifiedNameInput = document.getElementById('unifiedNameInput');
-  [nameInput, unifiedNameInput].forEach(input => {
+  [document.getElementById('nameInput'), document.getElementById('unifiedNameInput')].forEach(input => {
     input?.addEventListener('compositionstart', () => { state.isImeComposing = true; });
     input?.addEventListener('compositionend', () => { state.isImeComposing = false; });
   });
 
   document.addEventListener('keydown', event => {
-    const nameOverlay = document.getElementById('nameModalOverlay');
-    const deleteOverlay = document.getElementById('deleteModalOverlay');
-    const unifiedOverlay = document.getElementById('unifiedModalOverlay');
+    if (handleModalKeyboard(event, document.getElementById('nameModalOverlay'), {
+      cancel: cancelNameModal,
+      save: saveName
+    })) return;
+    if (handleModalKeyboard(event, document.getElementById('deleteModalOverlay'), {
+      cancel: cancelDelete,
+      save: confirmDelete,
+      allowIme: false
+    })) return;
+    if (handleModalKeyboard(event, document.getElementById('unifiedModalOverlay'), {
+      cancel: cancelUnified,
+      save: saveUnified
+    })) return;
+
     const visualPicker = document.getElementById('visualPickerPopup');
-
-    if (isVisible(nameOverlay)) {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        cancelNameModal();
-      } else if (event.key === 'Enter' && !isImeEnter(event)) {
-        event.preventDefault();
-        saveName();
-      }
-      return;
-    }
-
-    if (isVisible(deleteOverlay)) {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        cancelDelete();
-      } else if (event.key === 'Enter') {
-        event.preventDefault();
-        confirmDelete();
-      }
-      return;
-    }
-
-    if (isVisible(unifiedOverlay)) {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        cancelUnified();
-      } else if (event.key === 'Enter' && !isImeEnter(event)) {
-        event.preventDefault();
-        saveUnified();
-      }
-      return;
-    }
-
     if (isVisible(visualPicker)) {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -540,16 +334,12 @@ function initKeyboardInteraction() {
     }
 
     if (isTextEditingTarget(event.target)) return;
-
     const key = event.key.toLowerCase();
     const commandKey = event.metaKey || event.ctrlKey;
-    const undoShortcut = commandKey && key === 'z' && !event.shiftKey;
-    const redoShortcut = commandKey && ((key === 'z' && event.shiftKey) || (event.ctrlKey && key === 'y'));
-
-    if (undoShortcut) {
+    if (commandKey && key === 'z' && !event.shiftKey) {
       event.preventDefault();
       undoEdit();
-    } else if (redoShortcut) {
+    } else if (commandKey && ((key === 'z' && event.shiftKey) || (event.ctrlKey && key === 'y'))) {
       event.preventDefault();
       redoEdit();
     }
@@ -557,40 +347,33 @@ function initKeyboardInteraction() {
 }
 
 function initGlobalInteraction() {
-  // Open cell menu (paintable cells) + close popups on outside click
-  document.addEventListener('mousedown', (e) => {
-    if (e.target.classList.contains('paintable')) {
-      state.activeCell = e.target;
-      openCellMenu(e.target);
+  document.addEventListener('pointerdown', event => {
+    const cell = event.target.closest('.paintable');
+    if (cell) {
+      state.activeCell = cell;
+      state.activeCellIndex = Number(cell.dataset.cellIndex);
+      openCellMenu(cell);
       return;
     }
 
-    // click outside: close popups (but don't interfere with modal interaction)
-    if (!e.target.closest('.ios-popup') &&
-        !e.target.closest('#visualPickerPopup') &&
-        !e.target.closest('.modal')) {
-      closeAllPopups();
-    }
+    if (!event.target.closest('.ios-popup, .modal')) closeAllPopups();
   });
 
-  // Text selection prevention (kept as-is)
-  document.addEventListener('selectstart', (e) => {
-    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') e.preventDefault();
+  document.addEventListener('selectstart', event => {
+    if (!event.target.closest('input, textarea')) event.preventDefault();
   });
-
-  document.addEventListener('dragstart', (e) => {
-    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') e.preventDefault();
+  document.addEventListener('dragstart', event => {
+    if (!event.target.closest('input, textarea')) event.preventDefault();
   });
-
   window.addEventListener('resize', handleViewportResize);
   window.visualViewport?.addEventListener('resize', handleViewportResize);
 }
 
-
-// Boot (script is loaded at end of body, but keep safe)
 (function boot() {
-  initColorPicker();
-  initUnifiedColorPicker();
+  initializeCells();
+  configureHistory({ renderApp });
+  renderApp();
+  initColorPickers();
   initLegendDelegation();
   initModalButtons();
   initGlobalInteraction();

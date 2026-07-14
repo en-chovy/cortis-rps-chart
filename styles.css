@@ -7,11 +7,6 @@
     --cell-width: clamp(44px, calc((100vw - 64px) / 6), 112px);
     --cell-height: clamp(36px, calc(var(--cell-width) * 0.5714), 64px);
     --grid-line: 0.5px;
-    --color-1: #ffadad; --color-1-a: rgba(255, 173, 173, 0.5);
-    --color-2: #ffd6a5; --color-2-a: rgba(255, 214, 165, 0.5);
-    --color-3: #fdffb6; --color-3-a: rgba(253, 255, 182, 0.5);
-    --color-4: #caffbf; --color-4-a: rgba(202, 255, 191, 0.5);
-    --color-5: #9bf6ff; --color-5-a: rgba(155, 246, 255, 0.5);
     }
 
 /* --- GLOBAL STYLES --- */
@@ -28,7 +23,6 @@ input, textarea {
     user-select: text;
     cursor: auto;
 }
-
 body {
     font-family: 'Pretendard', -apple-system, sans-serif;
     display: flex; justify-content: center; align-items: flex-start;
@@ -179,7 +173,7 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 
 /* --- COLOR PICKER --- */
 .picker-container { display: flex; flex-direction: column; gap: 12px; }
-.sat-bright-area { width: 100%; height: 150px; border-radius: 12px; position: relative; cursor: crosshair; overflow: hidden; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); background-color: red; }
+.sat-bright-area { width: 100%; height: 150px; border-radius: 12px; position: relative; cursor: crosshair; touch-action: none; overflow: hidden; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); background-color: red; }
 .picker-cursor { position: absolute; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
 .hue-slider { width: 100%; height: 14px; border-radius: 7px; appearance: none; background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%); cursor: pointer; outline: none; }
 .hue-slider::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: white; border: 1px solid #ccc; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
@@ -317,7 +311,7 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
         margin-bottom: 10px;
     }
     .unified-modal .input-group label,
-    .unified-modal .picker-container label { 
+    .unified-modal .picker-container label {
         display: block; 
         font-size: 12px; 
         font-weight: 400; 
