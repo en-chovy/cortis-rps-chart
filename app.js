@@ -16,6 +16,7 @@ import {
   getLegend,
   getLegendColor,
   paintCell,
+  paintNameGroup,
   renameLegend,
   setLegendColor
 } from './src/model.js';
@@ -194,7 +195,7 @@ function deleteUnifiedLegend() {
 function openCellMenu(target) {
   closeAllPopups();
   const menu = document.getElementById('cellMenu');
-  if (!menu || state.activeCellIndex == null) return;
+  if (!menu || (state.activeCellIndex == null && state.activeNameGroup == null)) return;
   menu.replaceChildren();
 
   getEditableState().legends.forEach(legend => {
@@ -202,7 +203,7 @@ function openCellMenu(target) {
     option.className = 'menu-option';
     option.style.backgroundColor = `var(--color-${legend.id}-a)`;
     option.addEventListener('click', () => {
-      commitMutation('cell-paint', () => paintCell(state.activeCellIndex, legend.id));
+      commitMutation('cell-paint', () => paintActiveTarget(legend.id));
       closeAllPopups();
     });
     menu.appendChild(option);
@@ -212,12 +213,20 @@ function openCellMenu(target) {
   reset.className = 'menu-reset';
   reset.textContent = '✕';
   reset.addEventListener('click', () => {
-    commitMutation('cell-clear', () => paintCell(state.activeCellIndex, null));
+    commitMutation('cell-clear', () => paintActiveTarget(null));
     closeAllPopups();
   });
   menu.appendChild(reset);
 
   positionPopup(menu, target, false);
+}
+
+function paintActiveTarget(legendId) {
+  if (state.activeNameGroup) {
+    paintNameGroup(state.activeNameGroup.axis, state.activeNameGroup.index, legendId);
+  } else if (state.activeCellIndex != null) {
+    paintCell(state.activeCellIndex, legendId);
+  }
 }
 
 function initLegendDelegation() {
@@ -348,10 +357,23 @@ function initKeyboardInteraction() {
 
 function initGlobalInteraction() {
   document.addEventListener('pointerdown', event => {
+    const nameCell = event.target.closest('.paintable-name');
+    if (nameCell) {
+      state.activeCell = nameCell;
+      state.activeCellIndex = null;
+      state.activeNameGroup = {
+        axis: nameCell.dataset.axis,
+        index: Number(nameCell.dataset.groupIndex)
+      };
+      openCellMenu(nameCell);
+      return;
+    }
+
     const cell = event.target.closest('.paintable');
     if (cell) {
       state.activeCell = cell;
       state.activeCellIndex = Number(cell.dataset.cellIndex);
+      state.activeNameGroup = null;
       openCellMenu(cell);
       return;
     }

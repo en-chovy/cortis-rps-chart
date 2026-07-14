@@ -40,6 +40,38 @@ test('paints a cell and restores it through history', async ({ page }) => {
   await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
 });
 
+test('paints a full row from its name cell and restores it through history', async ({ page }) => {
+  const nameCell = page.locator('.paintable-name[data-axis="row"][data-group-index="2"]');
+  const rowCells = page.locator('#rpsTable tbody tr').nth(2).locator('.paintable');
+
+  await nameCell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+  await expect(nameCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  await expect(rowCells).toHaveCount(4);
+  for (let index = 0; index < 4; index += 1) {
+    await expect(rowCells.nth(index)).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  }
+
+  await page.locator('#undoButton').click();
+  await expect(nameCell).toHaveCSS('background-color', 'rgb(99, 99, 102)');
+  for (let index = 0; index < 4; index += 1) {
+    await expect(rowCells.nth(index)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  }
+});
+
+test('paints a full column from its name cell', async ({ page }) => {
+  const nameCell = page.locator('.paintable-name[data-axis="column"][data-group-index="4"]');
+  const columnCells = page.locator('#rpsTable tbody tr').locator('td:nth-child(6):not(.empty-cell)');
+
+  await nameCell.click();
+  await page.locator('#cellMenu .menu-option').nth(1).click();
+  await expect(nameCell).toHaveCSS('background-color', 'rgba(255, 214, 165, 0.5)');
+  await expect(columnCells).toHaveCount(4);
+  for (let index = 0; index < 4; index += 1) {
+    await expect(columnCells.nth(index)).toHaveCSS('background-color', 'rgba(255, 214, 165, 0.5)');
+  }
+});
+
 test('closes the name modal with Escape and restores focus', async ({ page }) => {
   const addButton = page.locator('.btn-add-legend');
   await addButton.click();
