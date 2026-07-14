@@ -8,7 +8,7 @@ function colorToRgba({ hex, alpha }) {
 }
 
 export function renderColors() {
-  const { colors, nameCells, cells } = getEditableState();
+  const { colors, cells } = getEditableState();
   const root = document.documentElement;
 
   Object.entries(colors).forEach(([id, color]) => {
@@ -18,12 +18,6 @@ export function renderColors() {
 
   document.querySelectorAll('.paintable').forEach((cell, index) => {
     const legendId = cells[index];
-    cell.style.backgroundColor = legendId == null ? '' : `var(--color-${legendId}-a)`;
-  });
-
-  document.querySelectorAll('.paintable-name').forEach(cell => {
-    const offset = cell.dataset.axis === 'column' ? 0 : 5;
-    const legendId = nameCells[offset + Number(cell.dataset.groupIndex)];
     cell.style.backgroundColor = legendId == null ? '' : `var(--color-${legendId}-a)`;
   });
 }

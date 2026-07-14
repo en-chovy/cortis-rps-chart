@@ -12,7 +12,6 @@ export function createInitialEditableState() {
     nextLegendId,
     legends: INITIAL_LEGENDS.map(({ id, name }) => ({ id, name })),
     colors: Object.fromEntries(INITIAL_LEGENDS.map(({ id, color }) => [id, { ...color }])),
-    nameCells: Array(10).fill(null),
     cells: Array(20).fill(null)
   };
 }
@@ -76,9 +75,6 @@ export function paintNameGroup(axis, groupIndex, legendId) {
   if (!['row', 'column'].includes(axis) || numericGroupIndex < 0 || numericGroupIndex >= 5) return;
 
   const numericLegendId = legendId == null ? null : Number(legendId);
-  const nameCellIndex = axis === 'column' ? numericGroupIndex : numericGroupIndex + 5;
-  editableState.nameCells[nameCellIndex] = numericLegendId;
-
   let cellIndex = 0;
   for (let row = 0; row < 5; row += 1) {
     for (let column = 0; column < 5; column += 1) {

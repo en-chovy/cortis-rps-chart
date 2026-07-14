@@ -46,7 +46,7 @@ test('paints a full row from its name cell and restores it through history', asy
 
   await nameCell.click();
   await page.locator('#cellMenu .menu-option').first().click();
-  await expect(nameCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  await expect(nameCell).toHaveCSS('background-color', 'rgb(99, 99, 102)');
   await expect(rowCells).toHaveCount(4);
   for (let index = 0; index < 4; index += 1) {
     await expect(rowCells.nth(index)).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
@@ -65,7 +65,7 @@ test('paints a full column from its name cell', async ({ page }) => {
 
   await nameCell.click();
   await page.locator('#cellMenu .menu-option').nth(1).click();
-  await expect(nameCell).toHaveCSS('background-color', 'rgba(255, 214, 165, 0.5)');
+  await expect(nameCell).toHaveCSS('background-color', 'rgb(99, 99, 102)');
   await expect(columnCells).toHaveCount(4);
   for (let index = 0; index < 4; index += 1) {
     await expect(columnCells.nth(index)).toHaveCSS('background-color', 'rgba(255, 214, 165, 0.5)');
