@@ -1,212 +1,39 @@
-/* --- GLOBAL STATE --- */
-let activeCell = null;
+import { getAlphaFromRgba, hexToRgb, rgbToHsv, toColorValues } from './src/color.js';
+import { initExportControls } from './src/export.js';
+import {
+  captureEditableState,
+  commitMutation,
+  initHistoryControls,
+  recordHistory,
+  redoEdit,
+  restoreEditableState,
+  undoEdit
+} from './src/history.js';
+import { createLegendElement } from './src/legend-dom.js';
+import { state } from './src/state.js';
+import {
+  closeAllPopups,
+  closeModal,
+  closeVisualPicker,
+  handleViewportResize,
+  positionPopup,
+  showModal
+} from './src/ui.js';
 
-let editingId = null;          // legend id currently being color-edited
-let isAdding = false;          // name modal mode
-let currentLabelId = '';       // label DOM id currently being edited
-let itemCount = 5;             // last legend id
-
-let currentH = 0, currentS = 100, currentV = 100;  // HSV for visual picker
-let currentA = 0.5; // Alpha value
-
-let pendingDeleteItemId = null;
-
-let tempH = 0, tempS = 100, tempV = 100, tempA = 0.5;
-let unifiedEditingId = null;
-let popupRepositionFrame = null;
-let lastViewportWidth = window.innerWidth;
-let visualPickerSession = null;
-let unifiedEditBefore = null;
-let isImeComposing = false;
-
-const undoStack = [];
-const redoStack = [];
-const modalReturnFocus = new Map();
-const HISTORY_LIMIT = 100;
 function isMobile() {
-    return window.innerWidth <= 480;
-}
-
-function needsConstrainedPopup() {
-    return window.innerWidth <= 1024;
-}
-
-/* --- EDIT HISTORY --- */
-function createLegendElement({ id, name }) {
-  const item = document.createElement('div');
-  item.className = 'legend-item';
-  item.id = `item-${id}`;
-
-  const display = document.createElement('div');
-  display.className = 'circle-display';
-  display.id = `disp-${id}`;
-  display.style.backgroundColor = `var(--color-${id}-a)`;
-
-  const label = document.createElement('span');
-  label.className = 'editable-label';
-  label.id = `label-${id}`;
-  label.textContent = name;
-
-  const deleteButton = document.createElement('button');
-  deleteButton.className = 'btn-delete-item';
-  deleteButton.type = 'button';
-  deleteButton.setAttribute('aria-label', `${name} 범례 삭제`);
-  deleteButton.textContent = '✕';
-
-  item.append(display, label, deleteButton);
-  return item;
-}
-
-function captureEditableState() {
-  const rootStyle = getComputedStyle(document.documentElement);
-  const colors = [];
-
-  for (let id = 1; id <= itemCount; id += 1) {
-    colors.push({
-      id,
-      hex: rootStyle.getPropertyValue(`--color-${id}`).trim(),
-      rgba: rootStyle.getPropertyValue(`--color-${id}-a`).trim()
-    });
-  }
-
-  return {
-    itemCount,
-    legends: [...document.querySelectorAll('.legend-item')].map(item => {
-      const id = Number(item.id.split('-')[1]);
-      return {
-        id,
-        name: document.getElementById(`label-${id}`)?.textContent ?? ''
-      };
-    }),
-    colors,
-    cells: [...document.querySelectorAll('.paintable')].map(cell => {
-      const color = cell.style.backgroundColor;
-      return color === 'transparent' ? '' : color;
-    })
-  };
-}
-
-function restoreEditableState(state) {
-  const root = document.documentElement;
-  const highestId = Math.max(itemCount, state.itemCount);
-
-  for (let id = 1; id <= highestId; id += 1) {
-    root.style.removeProperty(`--color-${id}`);
-    root.style.removeProperty(`--color-${id}-a`);
-  }
-
-  state.colors.forEach(({ id, hex, rgba }) => {
-    if (hex) root.style.setProperty(`--color-${id}`, hex);
-    if (rgba) root.style.setProperty(`--color-${id}-a`, rgba);
-  });
-
-  itemCount = state.itemCount;
-
-  const legendContainer = document.getElementById('legendContainer');
-  const addButton = legendContainer?.querySelector('.btn-add-legend');
-  legendContainer?.querySelectorAll('.legend-item').forEach(item => item.remove());
-  state.legends.forEach(legend => {
-    const item = createLegendElement(legend);
-    if (addButton) legendContainer.insertBefore(item, addButton);
-    else legendContainer?.appendChild(item);
-  });
-
-  document.querySelectorAll('.paintable').forEach((cell, index) => {
-    cell.style.backgroundColor = state.cells[index] ?? '';
-  });
-}
-
-function statesMatch(first, second) {
-  return JSON.stringify(first) === JSON.stringify(second);
-}
-
-function updateHistoryControls() {
-  const undoButton = document.getElementById('undoButton');
-  const redoButton = document.getElementById('redoButton');
-  if (undoButton) undoButton.disabled = undoStack.length === 0;
-  if (redoButton) redoButton.disabled = redoStack.length === 0;
-}
-
-function recordHistory(type, before, after = captureEditableState()) {
-  if (statesMatch(before, after)) return false;
-
-  undoStack.push({ type, before, after });
-  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
-  redoStack.length = 0;
-  updateHistoryControls();
-  return true;
-}
-
-function commitMutation(type, mutate) {
-  const before = captureEditableState();
-  mutate();
-  recordHistory(type, before);
-}
-
-function undoEdit() {
-  const entry = undoStack.pop();
-  if (!entry) return;
-  restoreEditableState(entry.before);
-  redoStack.push(entry);
-  updateHistoryControls();
-}
-
-function redoEdit() {
-  const entry = redoStack.pop();
-  if (!entry) return;
-  restoreEditableState(entry.after);
-  undoStack.push(entry);
-  updateHistoryControls();
-}
-
-/* --- COLOR CONVERSION UTILS --- */
-function hsvToRgb(h, s, v) {
-  s /= 100; v /= 100;
-  const f = (n, k = (n + h / 60) % 6) => v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
-  return [
-    Math.round(f(5) * 255),
-    Math.round(f(3) * 255),
-    Math.round(f(1) * 255)
-  ];
-}
-function rgbToHex(r, g, b) {
-  return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
-}
-
-function hexToRgb(hex) {
-    hex = hex.trim().replace(/^#/, '');
-    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
-    const num = parseInt(hex, 16);
-    return [num >> 16, (num >> 8) & 255, num & 255];
-}
-
-function rgbToHsv(r, g, b) {
-    r /= 255, g /= 255, b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    const d = max - min;
-    let h = 0, s = max === 0 ? 0 : d / max, v = max;
-    if (max !== min) {
-        switch (max) {
-            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-            case g: h = (b - r) / d + 2; break;
-            case b: h = (r - g) / d + 4; break;
-        }
-        h /= 6;
-    }
-    return [Math.round(h * 360), Math.round(s * 100), Math.round(v * 100)];
+  return window.innerWidth <= 480;
 }
 
 function updateColors() {
-  if (editingId == null) return;
+  if (state.editingId == null) return;
 
-  const [r, g, b] = hsvToRgb(Number(currentH), Number(currentS), Number(currentV));
-  const hex = rgbToHex(r, g, b);
+  const { r, g, b, hex, rgba } = toColorValues(state.currentColor);
 
-  document.documentElement.style.setProperty(`--color-${editingId}`, hex);
-  document.documentElement.style.setProperty(`--color-${editingId}-a`, `rgba(${r}, ${g}, ${b}, ${currentA})`);
+  document.documentElement.style.setProperty(`--color-${state.editingId}`, hex);
+  document.documentElement.style.setProperty(`--color-${state.editingId}-a`, rgba);
 
   const sbArea = document.getElementById('sbArea');
-  if (sbArea) sbArea.style.backgroundColor = `hsl(${currentH}, 100%, 50%)`;
+  if (sbArea) sbArea.style.backgroundColor = `hsl(${state.currentColor.h}, 100%, 50%)`;
   
   const alphaSlider = document.getElementById('alphaSlider');
   if (alphaSlider) {
@@ -214,163 +41,11 @@ function updateColors() {
   }
 }
 
-/* --- UI CONTROL (POPUP/MODAL) --- */
-function focusTrigger(trigger) {
-  let focusTarget = trigger?.isConnected ? trigger : null;
-
-  if (!focusTarget && trigger instanceof Element) {
-    if (trigger.id) focusTarget = document.getElementById(trigger.id);
-
-    if (!focusTarget) {
-      const itemId = trigger.closest('.legend-item')?.id;
-      if (itemId && trigger.matches('.circle-display, .editable-label, .btn-delete-item')) {
-        const selector = trigger.matches('.circle-display')
-          ? '.circle-display'
-          : trigger.matches('.editable-label')
-            ? '.editable-label'
-            : '.btn-delete-item';
-        focusTarget = document.querySelector(`#${itemId} ${selector}`);
-      }
-    }
-  }
-
-  if (!focusTarget) focusTarget = document.querySelector('.btn-add-legend');
-  if (!focusTarget) return;
-
-  if (!focusTarget.matches('button, input, select, textarea, a[href], [tabindex]')) {
-    focusTarget.tabIndex = -1;
-  }
-
-  requestAnimationFrame(() => focusTarget.focus({ preventScroll: true }));
-}
-
-function showModal(id, trigger) {
-  const modal = document.getElementById(id);
-  if (!modal) return;
-  modalReturnFocus.set(id, trigger);
-  modal.style.display = 'flex';
-}
-
-function closeVisualPicker({ commit = true, restoreFocus = true } = {}) {
-  const visual = document.getElementById('visualPickerPopup');
-  const session = visualPickerSession;
-
-  if (visual) visual.style.display = 'none';
-
-  if (session) {
-    if (commit) recordHistory('legend-color', session.before);
-    else restoreEditableState(session.before);
-    if (restoreFocus) focusTrigger(session.trigger);
-  }
-
-  visualPickerSession = null;
-  editingId = null;
-}
-
-function closeAllPopups(options = {}) {
-  const menu = document.getElementById('cellMenu');
-  closeVisualPicker(options);
-  if (menu) menu.style.display = 'none';
-}
-
-function closeModal(id, { restoreFocus = true } = {}) {
-  const el = document.getElementById(id);
-  if (el) el.style.display = 'none';
-  const trigger = modalReturnFocus.get(id);
-  modalReturnFocus.delete(id);
-  if (restoreFocus) focusTrigger(trigger);
-}
-
-function closeAllEditingUI() {
-  closeAllPopups({ commit: true, restoreFocus: false });
-  document.querySelectorAll('.modal-overlay').forEach(overlay => closeModal(overlay.id, { restoreFocus: false }));
-
-  if (popupRepositionFrame !== null) {
-    cancelAnimationFrame(popupRepositionFrame);
-    popupRepositionFrame = null;
-  }
-
-  activeCell = null;
-  editingId = null;
-  unifiedEditingId = null;
-  unifiedEditBefore = null;
-  isImeComposing = false;
-  currentLabelId = '';
-  pendingDeleteItemId = null;
-  isAdding = false;
-}
-
-function handleViewportResize() {
-  const nextViewportWidth = window.innerWidth;
-
-  if (Math.abs(nextViewportWidth - lastViewportWidth) >= 1) {
-    lastViewportWidth = nextViewportWidth;
-    closeAllEditingUI();
-    return;
-  }
-
-  scheduleOpenCellMenuPosition();
-}
-
-function positionPopup(popup, target, isBelow) {
-  if (!popup || !target) return;
-
-  popup.style.display = 'flex';
-
-  const rect = target.getBoundingClientRect();
-  const container = document.querySelector('.container');
-  if (!container) return;
-
-  const containerRect = container.getBoundingClientRect();
-  const targetCenterX = rect.left + rect.width / 2;
-  let popupLeft = targetCenterX - containerRect.left - popup.offsetWidth / 2;
-
-  if (popup.id === 'cellMenu' && needsConstrainedPopup()) {
-    const viewportPadding = 8;
-    const idealViewportLeft = targetCenterX - popup.offsetWidth / 2;
-    const maxViewportLeft = Math.max(
-      viewportPadding,
-      window.innerWidth - popup.offsetWidth - viewportPadding
-    );
-    const popupViewportLeft = Math.min(
-      Math.max(idealViewportLeft, viewportPadding),
-      maxViewportLeft
-    );
-    const arrowInset = 14;
-    const arrowLeft = Math.min(
-      Math.max(targetCenterX - popupViewportLeft, arrowInset),
-      popup.offsetWidth - arrowInset
-    );
-
-    popupLeft = popupViewportLeft - containerRect.left;
-    popup.style.setProperty('--arrow-left', `${arrowLeft}px`);
-  } else {
-    popup.style.removeProperty('--arrow-left');
-  }
-
-  popup.style.left = popupLeft + 'px';
-  popup.style.top = isBelow
-    ? (rect.bottom - containerRect.top + 10) + 'px'
-    : (rect.top - containerRect.top - popup.offsetHeight - 10) + 'px';
-}
-
-function scheduleOpenCellMenuPosition() {
-  if (popupRepositionFrame !== null) cancelAnimationFrame(popupRepositionFrame);
-
-  popupRepositionFrame = requestAnimationFrame(() => {
-    popupRepositionFrame = null;
-
-    const menu = document.getElementById('cellMenu');
-    if (!activeCell?.isConnected || !menu || menu.style.display === 'none') return;
-
-    positionPopup(menu, activeCell, false);
-  });
-}
-
+/* --- LEGEND EDITING --- */
 function openVisualPicker(target, id) {
   closeAllPopups({ commit: true, restoreFocus: false });
-  editingId = Number(id);
-  visualPickerSession = {
+  state.editingId = Number(id);
+  state.visualPickerSession = {
     before: captureEditableState(),
     trigger: target
   };
@@ -382,17 +57,16 @@ function openVisualPicker(target, id) {
   if (hexColor) {
       const [r, g, b] = hexToRgb(hexColor);
       const [h, s, v] = rgbToHsv(r, g, b);
-      currentH = h; 
-      currentS = s; 
-      currentV = v;
+      state.currentColor.h = h;
+      state.currentColor.s = s;
+      state.currentColor.v = v;
 
-      const alphaMatch = rgbaColor.match(/([0-9.]+)\s*\)$/);
-      currentA = alphaMatch ? parseFloat(alphaMatch[1]) : 0.5;
+      state.currentColor.a = getAlphaFromRgba(rgbaColor);
 
       const hueSlider = document.getElementById('hueSlider');
-      if (hueSlider) hueSlider.value = currentH;
+      if (hueSlider) hueSlider.value = state.currentColor.h;
       const alphaSlider = document.getElementById('alphaSlider');
-      if (alphaSlider) alphaSlider.value = currentA;
+      if (alphaSlider) alphaSlider.value = state.currentColor.a;
   }
   
   const popup = document.getElementById('visualPickerPopup');
@@ -402,8 +76,8 @@ function openVisualPicker(target, id) {
   const cursor = document.getElementById('pickerCursor');
   if (sbArea && cursor) {
       const rect = sbArea.getBoundingClientRect();
-      const x = (currentS / 100) * rect.width;
-      const y = ((100 - currentV) / 100) * rect.height;
+      const x = (state.currentColor.s / 100) * rect.width;
+      const y = ((100 - state.currentColor.v) / 100) * rect.height;
       cursor.style.left = x + 'px';
       cursor.style.top = y + 'px';
   }
@@ -412,9 +86,9 @@ function openVisualPicker(target, id) {
 }
 
 function updateUnifiedColorsPreview() {
-    const [r, g, b] = hsvToRgb(Number(tempH), Number(tempS), Number(tempV));
+    const { r, g, b } = toColorValues(state.unifiedColor);
     const sbArea = document.getElementById('unifiedSbArea');
-    if (sbArea) sbArea.style.backgroundColor = `hsl(${tempH}, 100%, 50%)`;
+    if (sbArea) sbArea.style.backgroundColor = `hsl(${state.unifiedColor.h}, 100%, 50%)`;
     
     const alphaSlider = document.getElementById('unifiedAlphaSlider');
     if (alphaSlider) {
@@ -424,8 +98,8 @@ function updateUnifiedColorsPreview() {
 
 function openUnifiedModal(id, trigger) {
     closeAllPopups({ commit: true, restoreFocus: false });
-    unifiedEditingId = id;
-    unifiedEditBefore = captureEditableState();
+    state.unifiedEditingId = id;
+    state.unifiedEditBefore = captureEditableState();
     const rootStyle = getComputedStyle(document.documentElement);
     
     const labelEl = document.getElementById(`label-${id}`);
@@ -437,12 +111,11 @@ function openUnifiedModal(id, trigger) {
     if (hexColor) {
         const [r, g, b] = hexToRgb(hexColor);
         const [h, s, v] = rgbToHsv(r, g, b);
-        tempH = h; tempS = s; tempV = v;
-        const alphaMatch = rgbaColor.match(/([0-9.]+)\s*\)$/);
-        tempA = alphaMatch ? parseFloat(alphaMatch[1]) : 0.5;
+        state.unifiedColor.h = h; state.unifiedColor.s = s; state.unifiedColor.v = v;
+        state.unifiedColor.a = getAlphaFromRgba(rgbaColor);
 
-        document.getElementById('unifiedHueSlider').value = tempH;
-        document.getElementById('unifiedAlphaSlider').value = tempA;
+        document.getElementById('unifiedHueSlider').value = state.unifiedColor.h;
+        document.getElementById('unifiedAlphaSlider').value = state.unifiedColor.a;
     }
 
     showModal('unifiedModalOverlay', trigger);
@@ -450,8 +123,8 @@ function openUnifiedModal(id, trigger) {
     requestAnimationFrame(() => {
         const cursor = document.getElementById('unifiedPickerCursor');
         const rect = document.getElementById('unifiedSbArea').getBoundingClientRect();
-        const x = (tempS / 100) * rect.width;
-        const y = ((100 - tempV) / 100) * rect.height;
+        const x = (state.unifiedColor.s / 100) * rect.width;
+        const y = ((100 - state.unifiedColor.v) / 100) * rect.height;
         if (cursor) {
             cursor.style.left = x + 'px';
             cursor.style.top = y + 'px';
@@ -464,22 +137,21 @@ function saveUnified() {
     const val = document.getElementById('unifiedNameInput').value.trim();
     if (!val) return;
 
-    const before = unifiedEditBefore ?? captureEditableState();
-    const label = document.getElementById(`label-${unifiedEditingId}`);
+    const before = state.unifiedEditBefore ?? captureEditableState();
+    const label = document.getElementById(`label-${state.unifiedEditingId}`);
     if (label) {
       label.innerText = val;
       label.closest('.legend-item')?.querySelector('.btn-delete-item')?.setAttribute('aria-label', `${val} 범례 삭제`);
     }
 
-    const [r, g, b] = hsvToRgb(Number(tempH), Number(tempS), Number(tempV));
-    const hex = rgbToHex(r, g, b);
-    document.documentElement.style.setProperty(`--color-${unifiedEditingId}`, hex);
-    document.documentElement.style.setProperty(`--color-${unifiedEditingId}-a`, `rgba(${r}, ${g}, ${b}, ${tempA})`);
+    const { hex, rgba } = toColorValues(state.unifiedColor);
+    document.documentElement.style.setProperty(`--color-${state.unifiedEditingId}`, hex);
+    document.documentElement.style.setProperty(`--color-${state.unifiedEditingId}-a`, rgba);
     recordHistory('legend-edit', before);
 
-    unifiedEditBefore = null;
-    unifiedEditingId = null;
-    isImeComposing = false;
+    state.unifiedEditBefore = null;
+    state.unifiedEditingId = null;
+    state.isImeComposing = false;
     closeModal('unifiedModalOverlay');
 }
 
@@ -498,8 +170,8 @@ function initUnifiedColorPicker() {
         let x = Math.max(0, Math.min(rect.width, cx - rect.left));
         let y = Math.max(0, Math.min(rect.height, cy - rect.top));
 
-        tempS = (x / rect.width) * 100;
-        tempV = 100 - (y / rect.height) * 100;
+        state.unifiedColor.s = (x / rect.width) * 100;
+        state.unifiedColor.v = 100 - (y / rect.height) * 100;
 
         const cursor = document.getElementById('unifiedPickerCursor');
         if (cursor) { cursor.style.left = x + 'px'; cursor.style.top = y + 'px'; }
@@ -525,14 +197,14 @@ function initUnifiedColorPicker() {
     attachDrag('mousedown', 'mousemove', 'mouseup');
     attachDrag('touchstart', 'touchmove', 'touchend');
 
-    hueSlider.addEventListener('input', (e) => { tempH = e.target.value; updateUnifiedColorsPreview(); });
-    if (alphaSlider) alphaSlider.addEventListener('input', (e) => { tempA = e.target.value; updateUnifiedColorsPreview(); });
+    hueSlider.addEventListener('input', (e) => { state.unifiedColor.h = e.target.value; updateUnifiedColorsPreview(); });
+    if (alphaSlider) alphaSlider.addEventListener('input', (e) => { state.unifiedColor.a = e.target.value; updateUnifiedColorsPreview(); });
 }
 
 /* --- LEGEND MODAL LOGIC --- */
 function openNameModal(labelDomId, trigger) {
-  isAdding = false;
-  currentLabelId = labelDomId;
+  state.isAdding = false;
+  state.currentLabelId = labelDomId;
 
   document.getElementById('modalTitle').innerText = "이름 변경";
   const input = document.getElementById('nameInput');
@@ -542,7 +214,7 @@ function openNameModal(labelDomId, trigger) {
 }
 
 function openAddModal(trigger) {
-  isAdding = true;
+  state.isAdding = true;
 
   document.getElementById('modalTitle').innerText = "새 범례 추가";
   const input = document.getElementById('nameInput');
@@ -555,20 +227,20 @@ function saveName() {
   const val = document.getElementById('nameInput').value.trim();
   if (!val) return;
 
-  commitMutation(isAdding ? 'legend-add' : 'legend-name', () => {
-    if (isAdding) {
-      itemCount += 1;
+  commitMutation(state.isAdding ? 'legend-add' : 'legend-name', () => {
+    if (state.isAdding) {
+      state.itemCount += 1;
 
-      document.documentElement.style.setProperty(`--color-${itemCount}`, '#cccccc');
-      document.documentElement.style.setProperty(`--color-${itemCount}-a`, 'rgba(204,204,204,0.5)');
+      document.documentElement.style.setProperty(`--color-${state.itemCount}`, '#cccccc');
+      document.documentElement.style.setProperty(`--color-${state.itemCount}-a`, 'rgba(204,204,204,0.5)');
 
-      const item = createLegendElement({ id: itemCount, name: val });
+      const item = createLegendElement({ id: state.itemCount, name: val });
       const legendContainer = document.getElementById('legendContainer');
       const addButton = legendContainer?.querySelector('.btn-add-legend');
       if (addButton) legendContainer.insertBefore(item, addButton);
       else legendContainer?.appendChild(item);
     } else {
-      const label = document.getElementById(currentLabelId);
+      const label = document.getElementById(state.currentLabelId);
       if (label) {
         label.innerText = val;
         label.closest('.legend-item')?.querySelector('.btn-delete-item')?.setAttribute('aria-label', `${val} 범례 삭제`);
@@ -576,50 +248,50 @@ function saveName() {
     }
   });
 
-  isAdding = false;
-  currentLabelId = '';
-  isImeComposing = false;
+  state.isAdding = false;
+  state.currentLabelId = '';
+  state.isImeComposing = false;
   closeModal('nameModalOverlay');
 }
 
 function cancelNameModal() {
-  isImeComposing = false;
-  isAdding = false;
-  currentLabelId = '';
+  state.isImeComposing = false;
+  state.isAdding = false;
+  state.currentLabelId = '';
   closeModal('nameModalOverlay');
 }
 
 function openDeleteConfirm(itemId, trigger) {
-  pendingDeleteItemId = itemId;
+  state.pendingDeleteItemId = itemId;
   showModal('deleteModalOverlay', trigger);
 }
 
 function cancelDelete() {
-  pendingDeleteItemId = null;
+  state.pendingDeleteItemId = null;
   closeModal('deleteModalOverlay');
 }
 
 function confirmDelete() {
-  if (!pendingDeleteItemId) return;
-  const itemId = pendingDeleteItemId;
+  if (!state.pendingDeleteItemId) return;
+  const itemId = state.pendingDeleteItemId;
   commitMutation('legend-delete', () => document.getElementById(itemId)?.remove());
-  pendingDeleteItemId = null;
+  state.pendingDeleteItemId = null;
   closeModal('deleteModalOverlay');
 }
 
 function cancelUnified() {
-  isImeComposing = false;
-  unifiedEditingId = null;
-  unifiedEditBefore = null;
+  state.isImeComposing = false;
+  state.unifiedEditingId = null;
+  state.unifiedEditBefore = null;
   closeModal('unifiedModalOverlay');
 }
 
 function deleteUnifiedLegend() {
-  if (!unifiedEditingId) return;
-  const itemId = `item-${unifiedEditingId}`;
+  if (!state.unifiedEditingId) return;
+  const itemId = `item-${state.unifiedEditingId}`;
   commitMutation('legend-delete', () => document.getElementById(itemId)?.remove());
-  unifiedEditingId = null;
-  unifiedEditBefore = null;
+  state.unifiedEditingId = null;
+  state.unifiedEditBefore = null;
   closeModal('unifiedModalOverlay');
 }
 
@@ -638,9 +310,9 @@ function openCellMenu(target) {
     opt.className = 'menu-option';
     opt.style.backgroundColor = `var(--color-${id}-a)`;
     opt.addEventListener('click', () => {
-      if (activeCell) {
+      if (state.activeCell) {
         commitMutation('cell-paint', () => {
-          activeCell.style.backgroundColor = `var(--color-${id}-a)`;
+          state.activeCell.style.backgroundColor = `var(--color-${id}-a)`;
         });
       }
       closeAllPopups();
@@ -652,9 +324,9 @@ function openCellMenu(target) {
   reset.className = 'menu-reset';
   reset.innerText = '✕';
   reset.addEventListener('click', () => {
-    if (activeCell) {
+    if (state.activeCell) {
       commitMutation('cell-clear', () => {
-        activeCell.style.backgroundColor = '';
+        state.activeCell.style.backgroundColor = '';
       });
     }
     closeAllPopups();
@@ -686,8 +358,8 @@ function initColorPicker() {
     let x = Math.max(0, Math.min(rect.width, cx - rect.left));
     let y = Math.max(0, Math.min(rect.height, cy - rect.top));
 
-    currentS = (x / rect.width) * 100;
-    currentV = 100 - (y / rect.height) * 100;
+    state.currentColor.s = (x / rect.width) * 100;
+    state.currentColor.v = 100 - (y / rect.height) * 100;
 
     const cursor = document.getElementById('pickerCursor');
     if (cursor) {
@@ -725,13 +397,13 @@ function initColorPicker() {
   }, { passive: false });
 
   hueSlider.addEventListener('input', (e) => {
-    currentH = e.target.value;
+    state.currentColor.h = e.target.value;
     updateColors();
   });
 
   if (alphaSlider) {
     alphaSlider.addEventListener('input', (e) => {
-      currentA = e.target.value;
+      state.currentColor.a = e.target.value;
       updateColors();
     });
   }
@@ -806,15 +478,15 @@ function isTextEditingTarget(target) {
 }
 
 function isImeEnter(event) {
-  return event.key === 'Enter' && (event.isComposing || isImeComposing || event.keyCode === 229);
+  return event.key === 'Enter' && (event.isComposing || state.isImeComposing || event.keyCode === 229);
 }
 
 function initKeyboardInteraction() {
   const nameInput = document.getElementById('nameInput');
   const unifiedNameInput = document.getElementById('unifiedNameInput');
   [nameInput, unifiedNameInput].forEach(input => {
-    input?.addEventListener('compositionstart', () => { isImeComposing = true; });
-    input?.addEventListener('compositionend', () => { isImeComposing = false; });
+    input?.addEventListener('compositionstart', () => { state.isImeComposing = true; });
+    input?.addEventListener('compositionend', () => { state.isImeComposing = false; });
   });
 
   document.addEventListener('keydown', event => {
@@ -884,17 +556,11 @@ function initKeyboardInteraction() {
   });
 }
 
-function initHistoryControls() {
-  document.getElementById('undoButton')?.addEventListener('click', undoEdit);
-  document.getElementById('redoButton')?.addEventListener('click', redoEdit);
-  updateHistoryControls();
-}
-
 function initGlobalInteraction() {
   // Open cell menu (paintable cells) + close popups on outside click
   document.addEventListener('mousedown', (e) => {
     if (e.target.classList.contains('paintable')) {
-      activeCell = e.target;
+      state.activeCell = e.target;
       openCellMenu(e.target);
       return;
     }
@@ -920,263 +586,6 @@ function initGlobalInteraction() {
   window.visualViewport?.addEventListener('resize', handleViewportResize);
 }
 
-function getImageExportPreset() {
-  return {
-    pixelRatio: 4,
-    margin: 48,
-    contentWidth: 443
-  };
-}
-
-function createImageExportFrame() {
-  const container = document.querySelector('.container');
-  const heading = container?.querySelector('h1');
-  const legend = document.getElementById('legendContainer');
-  const chartFrame = container?.querySelector('.chart-frame');
-  if (!container || !heading || !legend || !chartFrame) return null;
-
-  const { contentWidth, margin } = getImageExportPreset();
-
-  const frame = document.createElement('div');
-  frame.className = 'image-export-frame';
-  frame.style.width = `${contentWidth}px`;
-  frame.style.padding = `${margin}px`;
-
-  const content = document.createElement('div');
-  content.className = 'image-export-content';
-  content.style.width = `${contentWidth}px`;
-
-  const headingClone = heading.cloneNode(true);
-  const legendClone = legend.cloneNode(true);
-  const chartClone = chartFrame.cloneNode(true);
-  legendClone.querySelectorAll('.btn-add-legend, .btn-delete-item').forEach(button => button.remove());
-
-  content.append(headingClone, legendClone, chartClone);
-  frame.appendChild(content);
-  document.body.appendChild(frame);
-
-  const timestamp = chartClone.querySelector('.chart-timestamp:not([hidden])');
-  if (timestamp) {
-    const chartRect = chartClone.getBoundingClientRect();
-    const timestampRect = timestamp.getBoundingClientRect();
-    content.style.paddingBottom = `${Math.max(0, timestampRect.bottom - chartRect.bottom)}px`;
-  }
-
-  return frame;
-}
-
-function getLocalDateString() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function roundedRectPath(context, x, y, width, height, radius) {
-  const safeRadius = Math.min(radius, width / 2, height / 2);
-  context.beginPath();
-  context.roundRect(x, y, width, height, safeRadius);
-}
-
-function getRelativeRect(element, frameRect) {
-  const rect = element.getBoundingClientRect();
-  return {
-    x: rect.left - frameRect.left,
-    y: rect.top - frameRect.top,
-    width: rect.width,
-    height: rect.height,
-    right: rect.right - frameRect.left,
-    bottom: rect.bottom - frameRect.top
-  };
-}
-
-function setCanvasFont(context, style) {
-  context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-}
-
-function drawElementText(context, element, frameRect) {
-  const text = element.textContent.trim();
-  if (!text) return;
-
-  const rect = getRelativeRect(element, frameRect);
-  const style = getComputedStyle(element);
-  setCanvasFont(context, style);
-  context.fillStyle = style.color;
-  context.fillText(text, rect.x + rect.width / 2, rect.y + rect.height / 2);
-}
-
-function drawExportFrameToCanvas(exportFrame) {
-  const { pixelRatio } = getImageExportPreset();
-  const frameRect = exportFrame.getBoundingClientRect();
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(frameRect.width * pixelRatio);
-  canvas.height = Math.ceil(frameRect.height * pixelRatio);
-
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('canvas context is unavailable');
-
-  context.scale(pixelRatio, pixelRatio);
-  context.fillStyle = '#ffffff';
-  context.fillRect(0, 0, frameRect.width, frameRect.height);
-
-  const heading = exportFrame.querySelector('h1');
-  if (heading) drawElementText(context, heading, frameRect);
-
-  exportFrame.querySelectorAll('.legend-item').forEach(item => {
-    const circle = item.querySelector('.circle-display');
-    const label = item.querySelector('.editable-label');
-
-    if (circle) {
-      const circleRect = getRelativeRect(circle, frameRect);
-      const circleStyle = getComputedStyle(circle);
-      context.beginPath();
-      context.arc(
-        circleRect.x + circleRect.width / 2,
-        circleRect.y + circleRect.height / 2,
-        circleRect.width / 2,
-        0,
-        Math.PI * 2
-      );
-      context.fillStyle = circleStyle.backgroundColor;
-      context.fill();
-      context.strokeStyle = circleStyle.borderColor;
-      context.lineWidth = parseFloat(circleStyle.borderTopWidth) || 1;
-      context.stroke();
-    }
-
-    if (label) drawElementText(context, label, frameRect);
-  });
-
-  const tableShell = exportFrame.querySelector('.table-shell');
-  const table = exportFrame.querySelector('#rpsTable');
-  if (tableShell && table) {
-    const shellRect = getRelativeRect(tableShell, frameRect);
-    const shellStyle = getComputedStyle(tableShell);
-    const radius = parseFloat(shellStyle.borderTopLeftRadius) || 0;
-    const outerBorderWidth = parseFloat(shellStyle.borderTopWidth) || 1;
-    const cells = [...table.querySelectorAll('th, td')];
-
-    context.save();
-    roundedRectPath(context, shellRect.x, shellRect.y, shellRect.width, shellRect.height, radius);
-    context.clip();
-
-    cells.forEach(cell => {
-      const rect = getRelativeRect(cell, frameRect);
-      const style = getComputedStyle(cell);
-      context.fillStyle = style.backgroundColor;
-      context.fillRect(rect.x, rect.y, rect.width, rect.height);
-    });
-
-    const gridCell = cells.find(cell => parseFloat(getComputedStyle(cell).borderLeftWidth) > 0);
-    const gridStyle = gridCell ? getComputedStyle(gridCell) : shellStyle;
-    context.strokeStyle = shellStyle.borderTopColor;
-    context.lineWidth = parseFloat(gridStyle.borderLeftWidth) || outerBorderWidth;
-    context.beginPath();
-    const firstRow = [...table.rows[0].cells];
-    firstRow.slice(1).forEach(cell => {
-      const rect = getRelativeRect(cell, frameRect);
-      context.moveTo(rect.x, shellRect.y);
-      context.lineTo(rect.x, shellRect.bottom);
-    });
-    [...table.rows].slice(1).forEach(row => {
-      const rect = getRelativeRect(row.cells[0], frameRect);
-      context.moveTo(shellRect.x, rect.y);
-      context.lineTo(shellRect.right, rect.y);
-    });
-    context.stroke();
-
-    cells.forEach(cell => drawElementText(context, cell, frameRect));
-    context.restore();
-
-    roundedRectPath(
-      context,
-      shellRect.x + outerBorderWidth / 2,
-      shellRect.y + outerBorderWidth / 2,
-      shellRect.width - outerBorderWidth,
-      shellRect.height - outerBorderWidth,
-      Math.max(0, radius - outerBorderWidth / 2)
-    );
-    context.strokeStyle = shellStyle.borderTopColor;
-    context.lineWidth = outerBorderWidth;
-    context.stroke();
-  }
-
-  const timestamp = exportFrame.querySelector('.chart-timestamp:not([hidden])');
-  if (timestamp) drawElementText(context, timestamp, frameRect);
-
-  return canvas;
-}
-
-function canvasToBlob(canvas) {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(blob => {
-      if (blob) resolve(blob);
-      else reject(new Error('image blob creation failed'));
-    }, 'image/png');
-  });
-}
-
-async function saveChartImage() {
-  const saveButton = document.getElementById('saveImageButton');
-  const buttonLabel = saveButton?.querySelector('span');
-  if (!saveButton || !buttonLabel || saveButton.disabled) return;
-
-  saveButton.disabled = true;
-  saveButton.setAttribute('aria-busy', 'true');
-  buttonLabel.textContent = '이미지 만드는 중…';
-
-  let exportFrame = null;
-
-  try {
-    await document.fonts?.ready;
-    exportFrame = createImageExportFrame();
-    if (!exportFrame) throw new Error('image export area is unavailable');
-
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const canvas = drawExportFrameToCanvas(exportFrame);
-    const blob = await canvasToBlob(canvas);
-
-    const downloadUrl = URL.createObjectURL(blob);
-    const downloadLink = document.createElement('a');
-    downloadLink.href = downloadUrl;
-    downloadLink.download = `cortis-rps-chart-${getLocalDateString()}.png`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    downloadLink.remove();
-    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-  } catch (error) {
-    console.error('Failed to save chart image:', error);
-    window.alert('이미지를 만드는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
-  } finally {
-    exportFrame?.remove();
-    saveButton.disabled = false;
-    saveButton.removeAttribute('aria-busy');
-    buttonLabel.textContent = '이미지 저장';
-  }
-}
-
-function initExportControls() {
-  const timestampToggle = document.getElementById('timestampToggle');
-  const chartTimestamp = document.getElementById('chartTimestamp');
-  const saveButton = document.getElementById('saveImageButton');
-  if (!timestampToggle || !chartTimestamp || !saveButton) return;
-
-  const formattedDate = getLocalDateString();
-
-  chartTimestamp.dateTime = formattedDate;
-  chartTimestamp.textContent = formattedDate;
-
-  const updateTimestampVisibility = () => {
-    chartTimestamp.hidden = !timestampToggle.checked;
-  };
-
-  timestampToggle.addEventListener('change', updateTimestampVisibility);
-  saveButton.addEventListener('click', saveChartImage);
-  updateTimestampVisibility();
-}
 
 // Boot (script is loaded at end of body, but keep safe)
 (function boot() {
