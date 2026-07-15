@@ -175,3 +175,23 @@ test('downloads a non-empty PNG containing the painted chart color', async ({ pa
   expect(pixels.nonWhite).toBeGreaterThan(100_000);
   expect(pixels.otpPink).toBeGreaterThan(40_000);
 });
+
+test('downloads a PNG when a legend name contains emoji', async ({ page }) => {
+  await page.locator('.btn-add-legend').click();
+  await page.locator('#nameInput').fill('테스트 💙');
+  await page.locator('#nameModalOverlay .btn-save').click();
+  await expect(page.locator('#label-6')).toHaveText('테스트 💙');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#saveImageButton').click();
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  const png = Buffer.concat(chunks);
+
+  expect(download.suggestedFilename()).toMatch(/^cortis-rps-chart-\d{4}-\d{2}-\d{2}\.png$/);
+  expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  expect(png.readUInt32BE(16)).toBe(2156);
+  expect(png.readUInt32BE(20)).toBeGreaterThan(1000);
+});

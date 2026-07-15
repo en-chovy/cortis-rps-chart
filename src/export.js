@@ -4,6 +4,62 @@ const EXPORT_PRESET = {
   contentWidth: 443
 };
 
+function getCanvasFont(style) {
+  return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+}
+
+function getLineHeight(style) {
+  const lineHeight = Number.parseFloat(style.lineHeight);
+  if (Number.isFinite(lineHeight)) return lineHeight;
+
+  const fontSize = Number.parseFloat(style.fontSize);
+  return Number.isFinite(fontSize) ? fontSize * 1.2 : 0;
+}
+
+function getTextBounds(context, text, fallbackHeight = 0) {
+  const metrics = context.measureText(text);
+  const width = Math.max(
+    metrics.width,
+    (metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || 0)
+  );
+  const ascent = metrics.actualBoundingBoxAscent || fallbackHeight * 0.75;
+  const descent = metrics.actualBoundingBoxDescent || fallbackHeight * 0.25;
+
+  return {
+    left: metrics.actualBoundingBoxLeft || 0,
+    right: metrics.actualBoundingBoxRight || metrics.width,
+    width,
+    ascent,
+    descent,
+    height: ascent + descent
+  };
+}
+
+function prepareLegendLabelForCanvas(label, context) {
+  const text = label.textContent.trim();
+  if (!text) return;
+
+  const style = getComputedStyle(label);
+  const lineHeight = getLineHeight(style);
+  context.font = getCanvasFont(style);
+  context.textAlign = 'left';
+  context.textBaseline = 'alphabetic';
+
+  const bounds = getTextBounds(context, text, lineHeight);
+  label.style.display = 'inline-block';
+  label.style.width = `${Math.ceil(bounds.width) + 1}px`;
+  label.style.lineHeight = `${Math.ceil(Math.max(lineHeight, bounds.height, 16))}px`;
+}
+
+function prepareCanvasTextLayout(frame) {
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) return;
+
+  frame.querySelectorAll('.legend-item .editable-label').forEach(label => {
+    prepareLegendLabelForCanvas(label, context);
+  });
+}
+
 function createImageExportFrame() {
   const container = document.querySelector('.container');
   const heading = container?.querySelector('h1');
@@ -28,6 +84,7 @@ function createImageExportFrame() {
   content.append(headingClone, legendClone, chartClone);
   frame.appendChild(content);
   document.body.appendChild(frame);
+  prepareCanvasTextLayout(frame);
 
   const timestamp = chartClone.querySelector('.chart-timestamp:not([hidden])');
   if (timestamp) {
@@ -71,11 +128,16 @@ function drawElementText(context, element, frameRect) {
 
   const rect = getRelativeRect(element, frameRect);
   const style = getComputedStyle(element);
-  context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
+  const lineHeight = getLineHeight(style);
+  context.font = getCanvasFont(style);
+  context.textAlign = 'left';
+  context.textBaseline = 'alphabetic';
   context.fillStyle = style.color;
-  context.fillText(text, rect.x + rect.width / 2, rect.y + rect.height / 2);
+
+  const bounds = getTextBounds(context, text, lineHeight);
+  const x = rect.x + rect.width / 2 + (bounds.left - bounds.right) / 2;
+  const y = rect.y + rect.height / 2 + (bounds.ascent - bounds.descent) / 2;
+  context.fillText(text, x, y);
 }
 
 function drawExportFrameToCanvas(exportFrame) {
