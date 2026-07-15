@@ -73,9 +73,35 @@ function drawElementText(context, element, frameRect) {
   const style = getComputedStyle(element);
   context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
   context.textAlign = 'center';
-  context.textBaseline = 'middle';
+  context.textBaseline = 'alphabetic';
   context.fillStyle = style.color;
-  context.fillText(text, rect.x + rect.width / 2, rect.y + rect.height / 2);
+
+  const metrics = context.measureText(text);
+  const hasActualBounds = Number.isFinite(metrics.actualBoundingBoxAscent)
+    && Number.isFinite(metrics.actualBoundingBoxDescent)
+    && Number.isFinite(metrics.actualBoundingBoxLeft)
+    && Number.isFinite(metrics.actualBoundingBoxRight)
+    && metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent > 0;
+
+  if (!hasActualBounds) {
+    context.textBaseline = 'middle';
+    context.fillText(text, rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return;
+  }
+
+  const visualWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
+  const visualHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+  const x = rect.x + rect.width / 2
+    - (metrics.actualBoundingBoxRight - metrics.actualBoundingBoxLeft) / 2;
+  const y = rect.y + rect.height / 2
+    + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
+  const maxWidth = visualWidth > rect.width ? Math.max(1, rect.width) : undefined;
+
+  if (visualHeight > 0 && maxWidth != null) {
+    context.fillText(text, x, y, maxWidth);
+  } else if (visualHeight > 0) {
+    context.fillText(text, x, y);
+  }
 }
 
 function drawExportFrameToCanvas(exportFrame) {

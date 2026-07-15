@@ -4,6 +4,45 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
+async function downloadChartPng(page) {
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#saveImageButton').click();
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return { download, png: Buffer.concat(chunks) };
+}
+
+async function getPngPixelSummary(page, png) {
+  return page.evaluate(async base64 => {
+    const bytes = Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d');
+    context.drawImage(bitmap, 0, 0);
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let nonWhite = 0;
+    let otpPink = 0;
+    let darkLegendPixels = 0;
+
+    for (let index = 0; index < data.length; index += 4) {
+      const pixelIndex = index / 4;
+      const y = Math.floor(pixelIndex / canvas.width);
+      const red = data[index];
+      const green = data[index + 1];
+      const blue = data[index + 2];
+      if (red < 250 || green < 250 || blue < 250) nonWhite += 1;
+      if (red >= 250 && green >= 205 && green <= 225 && blue >= 205 && blue <= 225) otpPink += 1;
+      if (y >= 320 && y <= 520 && red < 90 && green < 90 && blue < 90) darkLegendPixels += 1;
+    }
+
+    return { nonWhite, otpPink, darkLegendPixels };
+  }, png.toString('base64'));
+}
+
 test('renders the initial chart and controls', async ({ page }) => {
   await expect(page.locator('h1')).toHaveText('CORTIS RPS 취향표');
   await expect(page.locator('.legend-item')).toHaveCount(5);
@@ -136,42 +175,58 @@ test('downloads a non-empty PNG containing the painted chart color', async ({ pa
   await cell.click();
   await page.locator('#cellMenu .menu-option').first().click();
 
-  const downloadPromise = page.waitForEvent('download');
-  await page.locator('#saveImageButton').click();
-  const download = await downloadPromise;
-  const stream = await download.createReadStream();
-  const chunks = [];
-  for await (const chunk of stream) chunks.push(chunk);
-  const png = Buffer.concat(chunks);
+  const { download, png } = await downloadChartPng(page);
 
   expect(download.suggestedFilename()).toMatch(/^cortis-rps-chart-\d{4}-\d{2}-\d{2}\.png$/);
   expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   expect(png.readUInt32BE(16)).toBe(2156);
   expect(png.readUInt32BE(20)).toBeGreaterThan(1000);
 
-  const pixels = await page.evaluate(async base64 => {
-    const bytes = Uint8Array.from(atob(base64), character => character.charCodeAt(0));
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext('2d');
-    context.drawImage(bitmap, 0, 0);
-    const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
-    let nonWhite = 0;
-    let otpPink = 0;
-
-    for (let index = 0; index < data.length; index += 4) {
-      const red = data[index];
-      const green = data[index + 1];
-      const blue = data[index + 2];
-      if (red < 250 || green < 250 || blue < 250) nonWhite += 1;
-      if (red >= 250 && green >= 205 && green <= 225 && blue >= 205 && blue <= 225) otpPink += 1;
-    }
-
-    return { nonWhite, otpPink };
-  }, png.toString('base64'));
+  const pixels = await getPngPixelSummary(page, png);
 
   expect(pixels.nonWhite).toBeGreaterThan(100_000);
   expect(pixels.otpPink).toBeGreaterThan(40_000);
+});
+
+test('exports complex unicode legend labels with metric-aware canvas text alignment', async ({ page }, testInfo) => {
+  const complexLabel = '❤️🧑‍💻👍🏽 Á漢字∑';
+
+  await page.locator('#label-1').click();
+  if (testInfo.project.name === 'mobile') {
+    await page.locator('#unifiedNameInput').fill(complexLabel);
+    await page.locator('#unifiedSaveBtn').click();
+  } else {
+    await page.locator('#nameInput').fill(complexLabel);
+    await page.locator('#nameModalOverlay .btn-save').click();
+  }
+  await expect(page.locator('#label-1')).toHaveText(complexLabel);
+
+  await page.evaluate(() => {
+    window.__canvasTextCalls = [];
+    const originalFillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function patchedFillText(text, x, y, maxWidth) {
+      window.__canvasTextCalls.push({
+        text,
+        x,
+        y,
+        maxWidth: Number.isFinite(maxWidth) ? maxWidth : null,
+        textBaseline: this.textBaseline,
+        font: this.font
+      });
+      return originalFillText.apply(this, arguments);
+    };
+  });
+
+  const { png } = await downloadChartPng(page);
+  const pixels = await getPngPixelSummary(page, png);
+  const textCall = await page.evaluate(label => (
+    window.__canvasTextCalls.find(call => call.text === label)
+  ), complexLabel);
+
+  expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  expect(pixels.nonWhite).toBeGreaterThan(100_000);
+  expect(pixels.darkLegendPixels).toBeGreaterThan(50);
+  expect(textCall).toBeTruthy();
+  expect(textCall.textBaseline).toBe('alphabetic');
+  expect(textCall.maxWidth).not.toBeNull();
 });
