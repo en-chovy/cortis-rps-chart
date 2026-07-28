@@ -123,6 +123,14 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     background: #fff; border-color: #e5e5ea; color: #c7c7cc;
     cursor: default; opacity: 0.7; transform: none;
 }
+.reset-button {
+    min-height: 34px; padding: 0 12px; border: 1px solid #d1d1d6; border-radius: 10px;
+    background: #fff; color: #636366; font-family: inherit; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+.reset-button:hover { background: #fff1f0; border-color: #ffc9c5; color: #d70015; }
+.reset-button:active { background: #ffe5e3; transform: scale(0.97); }
+.reset-button:focus-visible { outline: 3px solid rgba(215, 0, 21, 0.14); outline-offset: 2px; }
 
 .image-export-frame {
     position: fixed; top: 0; left: -10000px; z-index: -1;
@@ -252,7 +260,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     .timestamp-toggle { font-size: 12px; }
     .btn-save-image { min-height: 38px; font-size: 13px; }
     .history-controls { margin-top: 14px; }
-    .history-button { width: 32px; height: 32px; border-radius: 9px; }
+    .history-button { width: 44px; height: 44px; border-radius: 10px; }
+    .reset-button { min-height: 44px; padding: 0 12px; border-radius: 10px; font-size: 12px; }
     .circle-display {
         width: clamp(16px, 2.8vw, 24px);
         height: clamp(16px, 2.8vw, 24px);

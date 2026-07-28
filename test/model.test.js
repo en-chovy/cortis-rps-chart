@@ -56,12 +56,14 @@ test('updates legends, colors, and cells without reading the DOM', () => {
   assert.equal(state.cells[0], 6);
 });
 
-test('preserves the current deleted-legend cell behavior for v3.1', () => {
+test('clears only cells painted with a deleted legend', () => {
   paintCell(0, 1);
+  paintCell(1, 2);
+  paintCell(2, 1);
   deleteLegend(1);
 
   const state = getEditableState();
   assert.equal(state.legends.some(legend => legend.id === 1), false);
-  assert.equal(state.cells[0], 1);
+  assert.deepEqual(state.cells.slice(0, 3), [null, 2, null]);
   assert.deepEqual(state.colors[1], { hex: '#ffadad', alpha: 0.5 });
 });

@@ -3,6 +3,7 @@ import { createColorPicker } from './src/color-picker.js';
 import { initExportControls } from './src/export.js';
 import {
   captureEditableState,
+  clearHistory,
   commitMutation,
   configureHistory,
   initHistoryControls,
@@ -11,6 +12,7 @@ import {
 } from './src/history.js';
 import {
   addLegend,
+  createInitialEditableState,
   deleteLegend,
   getEditableState,
   getLegend,
@@ -18,8 +20,14 @@ import {
   paintCell,
   paintNameGroup,
   renameLegend,
+  replaceEditableState,
   setLegendColor
 } from './src/model.js';
+import {
+  clearEditableState,
+  loadEditableState,
+  saveEditableState
+} from './src/persistence.js';
 import { initializeCells, renderApp, renderColors } from './src/render.js';
 import { state } from './src/state.js';
 import {
@@ -192,6 +200,23 @@ function deleteUnifiedLegend() {
   closeModal('unifiedModalOverlay');
 }
 
+function openResetConfirm(trigger) {
+  showModal('resetModalOverlay', trigger);
+  requestAnimationFrame(() => document.getElementById('cancelResetBtn')?.focus());
+}
+
+function cancelReset() {
+  closeModal('resetModalOverlay');
+}
+
+function confirmReset() {
+  replaceEditableState(createInitialEditableState());
+  renderApp();
+  clearHistory();
+  clearEditableState();
+  closeModal('resetModalOverlay');
+}
+
 function openCellMenu(target) {
   closeAllPopups();
   const menu = document.getElementById('cellMenu');
@@ -271,6 +296,11 @@ function initModalButtons() {
   document.getElementById('unifiedSaveBtn')?.addEventListener('click', saveUnified);
   document.getElementById('unifiedCancelBtn')?.addEventListener('click', cancelUnified);
   document.getElementById('unifiedDeleteBtn')?.addEventListener('click', deleteUnifiedLegend);
+  document.getElementById('resetButton')?.addEventListener('click', event => (
+    openResetConfirm(event.currentTarget)
+  ));
+  document.getElementById('cancelResetBtn')?.addEventListener('click', cancelReset);
+  document.getElementById('confirmResetBtn')?.addEventListener('click', confirmReset);
 
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('pointerdown', event => {
@@ -278,6 +308,7 @@ function initModalButtons() {
       if (overlay.id === 'nameModalOverlay') cancelNameModal();
       else if (overlay.id === 'deleteModalOverlay') cancelDelete();
       else if (overlay.id === 'unifiedModalOverlay') cancelUnified();
+      else if (overlay.id === 'resetModalOverlay') cancelReset();
     });
   });
 }
@@ -328,6 +359,11 @@ function initKeyboardInteraction() {
     if (handleModalKeyboard(event, document.getElementById('unifiedModalOverlay'), {
       cancel: cancelUnified,
       save: saveUnified
+    })) return;
+    if (handleModalKeyboard(event, document.getElementById('resetModalOverlay'), {
+      cancel: cancelReset,
+      save: confirmReset,
+      allowIme: false
     })) return;
 
     const visualPicker = document.getElementById('visualPickerPopup');
@@ -392,8 +428,14 @@ function initGlobalInteraction() {
 }
 
 (function boot() {
+  const persistedState = loadEditableState();
+  if (persistedState) replaceEditableState(persistedState);
+
   initializeCells();
-  configureHistory({ renderApp });
+  configureHistory({
+    renderApp,
+    persistEditableState: saveEditableState
+  });
   renderApp();
   initColorPickers();
   initLegendDelegation();

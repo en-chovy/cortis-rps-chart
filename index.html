@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CORTIS RPS 취향표</title>
-    <link rel="stylesheet" href="./styles.css?v=20260714-12" />
+    <link rel="stylesheet" href="./styles.css?v=20260728-1" />
 </head>
 <body>
 
@@ -49,7 +49,7 @@
         </button>
     </section>
 
-    <nav class="history-controls" aria-label="편집 이력">
+    <div class="history-controls" role="group" aria-label="편집 작업">
         <button class="history-button" id="undoButton" type="button" aria-label="실행 취소" title="실행 취소 (⌘/Ctrl+Z)" disabled>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
                 <path d="M9 7L4 12l5 5"></path>
@@ -62,7 +62,8 @@
                 <path d="M19 12h-8.25A5.75 5.75 0 0 0 5 17.75"></path>
             </svg>
         </button>
-    </nav>
+        <button class="reset-button" id="resetButton" type="button">초기화</button>
+    </div>
 
     <footer class="site-footer">
         <span>&copy; 2026 en-chovy</span>
@@ -131,7 +132,18 @@
     </div>
 </div>
 
-<script type="module" src="./app.js?v=20260714-12"></script>
+<div class="modal-overlay" id="resetModalOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle" aria-describedby="resetModalDescription">
+        <h3 id="resetModalTitle">취향표 초기화</h3>
+        <p id="resetModalDescription">범례, 색상, 칠한 셀을 모두 기본 상태로 되돌립니다. 이 작업은 실행 취소할 수 없습니다.</p>
+        <div class="modal-buttons">
+            <button class="btn-cancel" id="cancelResetBtn" type="button">취소</button>
+            <button class="btn-save btn-delete" id="confirmResetBtn" type="button">초기화</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="./app.js?v=20260728-1"></script>
 
 </body>
 </html>

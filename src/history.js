@@ -4,9 +4,11 @@ const HISTORY_LIMIT = 100;
 const undoStack = [];
 const redoStack = [];
 let render = () => {};
+let persist = () => {};
 
-export function configureHistory({ renderApp }) {
+export function configureHistory({ renderApp, persistEditableState = () => {} }) {
   render = renderApp;
+  persist = persistEditableState;
 }
 
 export function captureEditableState() {
@@ -16,6 +18,7 @@ export function captureEditableState() {
 export function restoreEditableState(snapshot) {
   replaceEditableState(snapshot);
   render();
+  persist(cloneEditableState());
 }
 
 function updateControls() {
@@ -31,6 +34,7 @@ export function recordHistory(type, before, after = captureEditableState()) {
   undoStack.push({ type, before, after });
   if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
   redoStack.length = 0;
+  persist(after);
   updateControls();
   return true;
 }
@@ -63,5 +67,11 @@ export function redoEdit() {
 export function initHistoryControls() {
   document.getElementById('undoButton')?.addEventListener('click', undoEdit);
   document.getElementById('redoButton')?.addEventListener('click', redoEdit);
+  updateControls();
+}
+
+export function clearHistory() {
+  undoStack.length = 0;
+  redoStack.length = 0;
   updateControls();
 }

@@ -63,6 +63,9 @@ export function setLegendColor(id, color) {
 export function deleteLegend(id) {
   const numericId = Number(id);
   editableState.legends = editableState.legends.filter(legend => legend.id !== numericId);
+  editableState.cells = editableState.cells.map(legendId => (
+    legendId === numericId ? null : legendId
+  ));
 }
 
 export function paintCell(index, legendId) {

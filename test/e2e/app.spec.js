@@ -40,6 +40,87 @@ test('paints a cell and restores it through history', async ({ page }) => {
   await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
 });
 
+test('restores editable content after reload and resets it explicitly', async ({ page }) => {
+  await page.locator('.btn-add-legend').click();
+  await page.locator('#nameInput').fill('새 범례');
+  await page.locator('#nameModalOverlay .btn-save').click();
+
+  const cell = page.locator('.paintable').first();
+  await cell.click();
+  await page.locator('#cellMenu .menu-option').nth(5).click();
+  await expect(cell).toHaveCSS('background-color', 'rgba(204, 204, 204, 0.5)');
+
+  await page.reload();
+  await expect(page.locator('#label-6')).toHaveText('새 범례');
+  await expect(page.locator('.paintable').first()).toHaveCSS('background-color', 'rgba(204, 204, 204, 0.5)');
+  await expect(page.locator('#undoButton')).toBeDisabled();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#saveImageButton').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^cortis-rps-chart-\d{4}-\d{2}-\d{2}\.png$/);
+
+  await page.locator('#resetButton').click();
+  await expect(page.locator('#resetModalOverlay')).toBeVisible();
+  await expect(page.locator('#cancelResetBtn')).toBeFocused();
+  await page.locator('#confirmResetBtn').click();
+  await expect(page.locator('.legend-item')).toHaveCount(5);
+  await expect(page.locator('#label-6')).toHaveCount(0);
+  await expect(page.locator('.paintable').first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('#undoButton')).toBeDisabled();
+  await expect(page.locator('#redoButton')).toBeDisabled();
+
+  await page.reload();
+  await expect(page.locator('.legend-item')).toHaveCount(5);
+  await expect(page.locator('.paintable').first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('#undoButton')).toBeDisabled();
+});
+
+test('does not carry editable content into a new tab session', async ({ page, context }) => {
+  const cell = page.locator('.paintable').first();
+  await cell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.close();
+  const freshPage = await context.newPage();
+  await freshPage.goto('/');
+  await expect(freshPage.locator('.paintable').first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+});
+
+test('clears deleted-legend cells and restores the full state through history', async ({ page }, testInfo) => {
+  const firstCell = page.locator('.paintable').nth(0);
+  const secondCell = page.locator('.paintable').nth(1);
+
+  await firstCell.click();
+  await page.locator('#cellMenu .menu-option').nth(0).click();
+  await secondCell.click();
+  await page.locator('#cellMenu .menu-option').nth(1).click();
+
+  if (testInfo.project.name === 'mobile') {
+    await page.locator('#label-1').click();
+    await page.locator('#unifiedDeleteBtn').click();
+  } else {
+    await page.locator('#item-1').hover();
+    await page.locator('#item-1 .btn-delete-item').click();
+    await page.locator('#confirmDelBtn').click();
+  }
+
+  await expect(page.locator('#item-1')).toHaveCount(0);
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(secondCell).toHaveCSS('background-color', 'rgba(255, 214, 165, 0.5)');
+
+  await page.locator('#undoButton').click();
+  await expect(page.locator('#item-1')).toHaveCount(1);
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  await expect(secondCell).toHaveCSS('background-color', 'rgba(255, 214, 165, 0.5)');
+
+  await page.locator('#redoButton').click();
+  await expect(page.locator('#item-1')).toHaveCount(0);
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(secondCell).toHaveCSS('background-color', 'rgba(255, 214, 165, 0.5)');
+});
+
 test('paints a full row from its name cell and restores it through history', async ({ page }) => {
   const nameCell = page.locator('.paintable-name[data-axis="row"][data-group-index="2"]');
   const rowCells = page.locator('#rpsTable tbody tr').nth(2).locator('.paintable');
