@@ -74,23 +74,42 @@ test('limits legend names with inline feedback in every editor', async ({ page }
   const allowedName = '가'.repeat(15);
   let input;
   let error;
+  let modal;
 
   if (testInfo.project.name === 'mobile') {
     await page.locator('#label-1').tap();
     input = page.locator('#unifiedNameInput');
     error = page.locator('#unifiedNameInputError');
+    modal = page.locator('#unifiedModalOverlay .modal');
   } else {
     await page.locator('.btn-add-legend').click();
     input = page.locator('#nameInput');
     error = page.locator('#nameInputError');
+    modal = page.locator('#nameModalOverlay .modal');
   }
 
+  await expect(error).toBeHidden();
+  const heightBeforeFeedback = await modal.evaluate(element => element.offsetHeight);
   await input.fill(`${allowedName}나`);
   await expect(input).toHaveValue(allowedName);
   await expect(input).toHaveAttribute('aria-invalid', 'true');
   await expect(input).toHaveClass(/has-error/);
   await expect(error).toBeVisible();
   await expect(error).toHaveText('범례 이름은 15자까지 입력할 수 있어요.');
+  const heightDuringFeedback = await modal.evaluate(element => element.offsetHeight);
+  expect(heightDuringFeedback).toBe(heightBeforeFeedback);
+
+  await page.waitForTimeout(900);
+  await input.fill(`${allowedName}다`);
+  await page.waitForTimeout(900);
+  await expect(error).toBeVisible();
+  await expect(input).toHaveClass(/has-error/);
+
+  await expect(error).toBeHidden({ timeout: 2500 });
+  await expect(input).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(input).not.toHaveClass(/has-error/);
+  const heightAfterFeedback = await modal.evaluate(element => element.offsetHeight);
+  expect(heightAfterFeedback).toBe(heightBeforeFeedback);
 
   if (testInfo.project.name === 'mobile') {
     await page.locator('#unifiedSaveBtn').tap();

@@ -277,7 +277,14 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 }
 .modal .legend-name-input.is-limit-hit { animation: nameLimitHit 0.32s ease-in-out; }
 .modal .legend-name-error {
-    margin: -8px 0 15px; color: #d70015; font-size: 12px; line-height: 1.4;
+    height: 17px; margin: -8px 0 15px; overflow: hidden;
+    color: #d70015; font-size: 12px; line-height: 17px;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.16s ease, visibility 0s linear 0.16s;
+}
+.modal .legend-name-error.is-visible {
+    opacity: 1; visibility: visible;
+    transition-delay: 0s;
 }
 @keyframes nameLimitHit {
     0%, 100% { transform: translateX(0); }
@@ -404,7 +411,7 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
         width: 100%;
         padding: 12px 14px;
         background-color: #f2f2f7;
-        border: none; 
+        border: 1px solid transparent;
         border-radius: 12px; 
         font-size: 16px; 
         box-sizing: border-box; 
@@ -485,6 +492,10 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
         width: 20px; height: 20px;
         font-size: 12px;
     }
+}
+
+@media (max-width: 350px) {
+    .unified-modal .legend-name-error { height: 34px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
