@@ -1,6 +1,6 @@
-import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js';
-import { createColorPicker } from './src/color-picker.js';
-import { initExportControls } from './src/export.js';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260730-3';
+import { createColorPicker } from './src/color-picker.js?v=20260730-3';
+import { initExportControls } from './src/export.js?v=20260730-3';
 import {
   captureEditableState,
   clearHistory,
@@ -9,7 +9,7 @@ import {
   initHistoryControls,
   redoEdit,
   undoEdit
-} from './src/history.js';
+} from './src/history.js?v=20260730-3';
 import {
   addLegend,
   createInitialEditableState,
@@ -22,14 +22,18 @@ import {
   renameLegend,
   replaceEditableState,
   setLegendColor
-} from './src/model.js';
+} from './src/model.js?v=20260730-3';
+import {
+  LEGEND_NAME_MAX_LENGTH,
+  limitLegendName
+} from './src/legend-name.js?v=20260730-3';
 import {
   clearEditableState,
   loadEditableState,
   saveEditableState
-} from './src/persistence.js';
-import { initializeCells, renderApp, renderColors } from './src/render.js';
-import { state } from './src/state.js';
+} from './src/persistence.js?v=20260730-3';
+import { initializeCells, renderApp, renderColors } from './src/render.js?v=20260730-3';
+import { state } from './src/state.js?v=20260730-3';
 import {
   closeAllPopups,
   closeModal,
@@ -37,10 +41,53 @@ import {
   handleViewportResize,
   positionPopup,
   showModal
-} from './src/ui.js';
+} from './src/ui.js?v=20260730-3';
 
 let desktopPicker = null;
 let unifiedPicker = null;
+
+function getNameError(input) {
+  const errorId = input?.getAttribute('aria-describedby');
+  return errorId ? document.getElementById(errorId) : null;
+}
+
+function clearNameLimitError(input) {
+  if (!input) return;
+  input.removeAttribute('aria-invalid');
+  input.classList.remove('has-error', 'is-limit-hit');
+  const error = getNameError(input);
+  if (error) error.hidden = true;
+}
+
+function showNameLimitError(input) {
+  if (!input) return;
+  input.setAttribute('aria-invalid', 'true');
+  input.classList.add('has-error');
+  input.classList.remove('is-limit-hit');
+  void input.offsetWidth;
+  input.classList.add('is-limit-hit');
+  const error = getNameError(input);
+  if (error) error.hidden = false;
+}
+
+function enforceNameLimit(input) {
+  if (!input) return false;
+  const limited = limitLegendName(input.value);
+  if (limited.wasTruncated) {
+    input.value = limited.value;
+    showNameLimitError(input);
+    return true;
+  }
+
+  if (limited.length < LEGEND_NAME_MAX_LENGTH) clearNameLimitError(input);
+  return false;
+}
+
+function prepareNameInput(input, value) {
+  if (!input) return;
+  input.value = value;
+  clearNameLimitError(input);
+}
 
 function isMobile() {
   return window.innerWidth <= 480;
@@ -63,6 +110,7 @@ function initColorPickers() {
     hueSlider: document.getElementById('hueSlider'),
     alphaSlider: document.getElementById('alphaSlider'),
     cursor: document.getElementById('pickerCursor'),
+    preview: document.getElementById('colorPreview'),
     onChange: color => {
       if (state.editingId == null) return;
       updateLegendFromPicker(state.editingId, color);
@@ -74,7 +122,8 @@ function initColorPickers() {
     area: document.getElementById('unifiedSbArea'),
     hueSlider: document.getElementById('unifiedHueSlider'),
     alphaSlider: document.getElementById('unifiedAlphaSlider'),
-    cursor: document.getElementById('unifiedPickerCursor')
+    cursor: document.getElementById('unifiedPickerCursor'),
+    preview: document.getElementById('unifiedColorPreview')
   });
 }
 
@@ -101,13 +150,15 @@ function openUnifiedModal(id, trigger) {
 
   closeAllPopups({ commit: true, restoreFocus: false });
   state.unifiedEditingId = Number(id);
-  document.getElementById('unifiedNameInput').value = legend.name;
+  prepareNameInput(document.getElementById('unifiedNameInput'), legend.name);
   showModal('unifiedModalOverlay', trigger);
   unifiedPicker.setValue(toPickerColor(color));
 }
 
 function saveUnified() {
-  const name = document.getElementById('unifiedNameInput').value.trim();
+  const input = document.getElementById('unifiedNameInput');
+  enforceNameLimit(input);
+  const name = input.value.trim();
   const id = state.unifiedEditingId;
   if (!name || id == null || !unifiedPicker) return;
 
@@ -130,7 +181,7 @@ function openNameModal(id, trigger) {
   state.nameEditingId = Number(id);
   document.getElementById('modalTitle').textContent = '이름 변경';
   const input = document.getElementById('nameInput');
-  input.value = legend.name;
+  prepareNameInput(input, legend.name);
   showModal('nameModalOverlay', trigger);
   requestAnimationFrame(() => input.focus());
 }
@@ -140,13 +191,15 @@ function openAddModal(trigger) {
   state.nameEditingId = null;
   document.getElementById('modalTitle').textContent = '새 범례 추가';
   const input = document.getElementById('nameInput');
-  input.value = '';
+  prepareNameInput(input, '');
   showModal('nameModalOverlay', trigger);
   requestAnimationFrame(() => input.focus());
 }
 
 function saveName() {
-  const name = document.getElementById('nameInput').value.trim();
+  const input = document.getElementById('nameInput');
+  enforceNameLimit(input);
+  const name = input.value.trim();
   if (!name) return;
 
   if (state.isAdding) {
@@ -343,7 +396,14 @@ function handleModalKeyboard(event, overlay, { cancel, save, allowIme = true }) 
 function initKeyboardInteraction() {
   [document.getElementById('nameInput'), document.getElementById('unifiedNameInput')].forEach(input => {
     input?.addEventListener('compositionstart', () => { state.isImeComposing = true; });
-    input?.addEventListener('compositionend', () => { state.isImeComposing = false; });
+    input?.addEventListener('compositionend', () => {
+      state.isImeComposing = false;
+      enforceNameLimit(input);
+    });
+    input?.addEventListener('input', event => {
+      if (!event.isComposing && !state.isImeComposing) enforceNameLimit(input);
+    });
+    input?.addEventListener('animationend', () => input.classList.remove('is-limit-hit'));
   });
 
   document.addEventListener('keydown', event => {

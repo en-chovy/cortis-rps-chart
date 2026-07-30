@@ -70,6 +70,65 @@ test('adds a legend and supports undo and redo', async ({ page }) => {
   await expect(page.locator('#label-6')).toHaveText('테스트');
 });
 
+test('limits legend names with inline feedback in every editor', async ({ page }, testInfo) => {
+  const allowedName = '가'.repeat(15);
+  let input;
+  let error;
+
+  if (testInfo.project.name === 'mobile') {
+    await page.locator('#label-1').tap();
+    input = page.locator('#unifiedNameInput');
+    error = page.locator('#unifiedNameInputError');
+  } else {
+    await page.locator('.btn-add-legend').click();
+    input = page.locator('#nameInput');
+    error = page.locator('#nameInputError');
+  }
+
+  await input.fill(`${allowedName}나`);
+  await expect(input).toHaveValue(allowedName);
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  await expect(input).toHaveClass(/has-error/);
+  await expect(error).toBeVisible();
+  await expect(error).toHaveText('범례 이름은 15자까지 입력할 수 있어요.');
+
+  if (testInfo.project.name === 'mobile') {
+    await page.locator('#unifiedSaveBtn').tap();
+    await expect(page.locator('#label-1')).toHaveText(allowedName);
+  } else {
+    await page.locator('#nameModalOverlay .btn-save').click();
+    await expect(page.locator('#label-6')).toHaveText(allowedName);
+  }
+});
+
+test('waits for Korean IME composition before limiting a legend name', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop');
+
+  const allowedName = '가'.repeat(15);
+  await page.locator('.btn-add-legend').click();
+  const input = page.locator('#nameInput');
+  const error = page.locator('#nameInputError');
+
+  await input.evaluate((element, longName) => {
+    element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    element.value = longName;
+    element.dispatchEvent(new InputEvent('input', {
+      bubbles: true,
+      data: longName,
+      inputType: 'insertCompositionText',
+      isComposing: true
+    }));
+  }, `${allowedName}나`);
+  await expect(input).toHaveValue(`${allowedName}나`);
+  await expect(error).toBeHidden();
+
+  await input.evaluate(element => {
+    element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  });
+  await expect(input).toHaveValue(allowedName);
+  await expect(error).toBeVisible();
+});
+
 test('paints a cell and restores it through history', async ({ page }) => {
   const cell = page.locator('.paintable').first();
   await cell.click();
@@ -116,6 +175,23 @@ test('restores editable content after reload and resets it explicitly', async ({
   await expect(page.locator('.legend-item')).toHaveCount(5);
   await expect(page.locator('.paintable').first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect(page.locator('#undoButton')).toBeDisabled();
+});
+
+test('migrates an older long legend name without discarding the chart', async ({ page }) => {
+  const firstCell = page.locator('.paintable').first();
+  await firstCell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+
+  await page.evaluate(longName => {
+    const storageKey = 'cortis-rps-chart:editable-state';
+    const payload = JSON.parse(sessionStorage.getItem(storageKey));
+    payload.editableState.legends[0].name = longName;
+    sessionStorage.setItem(storageKey, JSON.stringify(payload));
+  }, '가'.repeat(16));
+  await page.reload();
+
+  await expect(page.locator('#label-1')).toHaveText('가'.repeat(15));
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
 });
 
 test('does not carry editable content into a new tab session', async ({ page, context }) => {
@@ -249,6 +325,33 @@ test('edits color through the shared picker and supports undo', async ({ page },
   expect(changed).not.toBe(original);
 
   await page.locator('#undoButton').click();
+  await expect.poll(() => page.evaluate(() => (
+    getComputedStyle(document.documentElement).getPropertyValue('--color-1').trim()
+  ))).toBe(original);
+});
+
+test('shows the pending color and larger slider targets on mobile', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile');
+
+  const original = await page.evaluate(() => (
+    getComputedStyle(document.documentElement).getPropertyValue('--color-1').trim()
+  ));
+  await page.locator('#label-1').tap();
+
+  const hueSlider = page.locator('#unifiedHueSlider');
+  const alphaSlider = page.locator('#unifiedAlphaSlider');
+  const preview = page.locator('#unifiedColorPreview');
+  await expect(hueSlider).toHaveCSS('height', '44px');
+  await expect(alphaSlider).toHaveCSS('height', '44px');
+  await expect(preview.locator('.selected-color-value')).toHaveText('#FFADAD · 50%');
+  await expect(preview.locator('.selected-color-swatch')).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await hueSlider.fill('120');
+  await alphaSlider.fill('0.75');
+  await expect(preview.locator('.selected-color-value')).toHaveText('#ADFFAD · 75%');
+  await expect(preview.locator('.selected-color-swatch')).toHaveCSS('background-color', 'rgba(173, 255, 173, 0.75)');
+
+  await page.locator('#unifiedCancelBtn').tap();
   await expect.poll(() => page.evaluate(() => (
     getComputedStyle(document.documentElement).getPropertyValue('--color-1').trim()
   ))).toBe(original);

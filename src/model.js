@@ -1,3 +1,5 @@
+import { normalizeLegendName } from './legend-name.js?v=20260730-3';
+
 const INITIAL_LEGENDS = [
   { id: 1, name: 'OTP', color: { hex: '#ffadad', alpha: 0.5 } },
   { id: 2, name: '좋음', color: { hex: '#ffd6a5', alpha: 0.5 } },
@@ -27,7 +29,12 @@ export function cloneEditableState() {
 }
 
 export function replaceEditableState(snapshot) {
-  editableState = JSON.parse(JSON.stringify(snapshot));
+  const nextState = JSON.parse(JSON.stringify(snapshot));
+  nextState.legends = nextState.legends.map(legend => ({
+    ...legend,
+    name: normalizeLegendName(legend.name)
+  }));
+  editableState = nextState;
   return editableState;
 }
 
@@ -42,14 +49,14 @@ export function getLegendColor(id) {
 export function addLegend(name) {
   const id = editableState.nextLegendId;
   editableState.nextLegendId += 1;
-  editableState.legends.push({ id, name });
+  editableState.legends.push({ id, name: normalizeLegendName(name) });
   editableState.colors[id] = { hex: '#cccccc', alpha: 0.5 };
   return id;
 }
 
 export function renameLegend(id, name) {
   const legend = getLegend(id);
-  if (legend) legend.name = name;
+  if (legend) legend.name = normalizeLegendName(name);
 }
 
 export function setLegendColor(id, color) {

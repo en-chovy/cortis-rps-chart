@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CORTIS RPS 취향표</title>
-    <link rel="stylesheet" href="./styles.css?v=20260730-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260730-3" />
 </head>
 <body>
 
@@ -74,8 +74,15 @@
     <div id="visualPickerPopup" class="ios-popup">
         <div class="picker-container">
             <div class="sat-bright-area" id="sbArea"><div class="picker-cursor" id="pickerCursor"></div></div>
-            <input type="range" class="hue-slider" id="hueSlider" min="0" max="360" value="0">
-            <input type="range" class="alpha-slider" id="alphaSlider" min="0" max="1" step="0.01" value="0.5">
+            <input type="range" class="hue-slider" id="hueSlider" min="0" max="360" value="0" aria-label="색조">
+            <input type="range" class="alpha-slider" id="alphaSlider" min="0" max="1" step="0.01" value="0.5" aria-label="투명도">
+            <output class="selected-color-preview" id="colorPreview" for="hueSlider alphaSlider">
+                <span class="selected-color-label">선택 색상</span>
+                <span class="selected-color-chip" aria-hidden="true">
+                    <span class="selected-color-swatch"></span>
+                </span>
+                <span class="selected-color-value">#FFADAD · 50%</span>
+            </output>
             <button class="btn-done">완료</button>
         </div>
     </div>
@@ -85,7 +92,9 @@
 <div class="modal-overlay" id="nameModalOverlay">
     <div class="modal">
         <h3 id="modalTitle">이름 변경</h3>
-        <input type="text" id="nameInput" placeholder="이름을 입력하세요">
+        <label class="visually-hidden" for="nameInput">범례 이름</label>
+        <input class="legend-name-input" type="text" id="nameInput" placeholder="이름을 입력하세요" aria-describedby="nameInputError" autocomplete="off">
+        <p class="legend-name-error" id="nameInputError" role="alert" hidden>범례 이름은 15자까지 입력할 수 있어요.</p>
         <div class="modal-buttons">
             <button class="btn-cancel" type="button">취소</button>
             <button class="btn-save" type="button">저장</button>
@@ -109,17 +118,26 @@
         <h3>범례 설정</h3>
         
         <div class="input-group">
-            <label>이름</label>
-            <input type="text" id="unifiedNameInput" placeholder="이름을 입력하세요">
+            <label for="unifiedNameInput">이름</label>
+            <input class="legend-name-input" type="text" id="unifiedNameInput" placeholder="이름을 입력하세요" aria-describedby="unifiedNameInputError" autocomplete="off">
+            <p class="legend-name-error" id="unifiedNameInputError" role="alert" hidden>범례 이름은 15자까지 입력할 수 있어요.</p>
         </div>
         
         <div class="picker-container">
-            <label>색상</label>
+            <div class="picker-label-row">
+                <span class="picker-section-label">색상</span>
+                <output class="selected-color-preview" id="unifiedColorPreview" for="unifiedHueSlider unifiedAlphaSlider">
+                    <span class="selected-color-chip" aria-hidden="true">
+                        <span class="selected-color-swatch"></span>
+                    </span>
+                    <span class="selected-color-value">#FFADAD · 50%</span>
+                </output>
+            </div>
             <div class="sat-bright-area" id="unifiedSbArea">
                 <div class="picker-cursor" id="unifiedPickerCursor"></div>
             </div>
-            <input type="range" class="hue-slider" id="unifiedHueSlider" min="0" max="360" value="0">
-            <input type="range" class="alpha-slider" id="unifiedAlphaSlider" min="0" max="1" step="0.01" value="0.5">
+            <input type="range" class="hue-slider" id="unifiedHueSlider" min="0" max="360" value="0" aria-label="색조">
+            <input type="range" class="alpha-slider" id="unifiedAlphaSlider" min="0" max="1" step="0.01" value="0.5" aria-label="투명도">
         </div>
 
         <div class="unified-action-buttons">
@@ -143,7 +161,7 @@
     </div>
 </div>
 
-<script type="module" src="./app.js?v=20260728-1"></script>
+<script type="module" src="./app.js?v=20260730-3"></script>
 
 </body>
 </html>

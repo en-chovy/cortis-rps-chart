@@ -56,6 +56,20 @@ test('updates legends, colors, and cells without reading the DOM', () => {
   assert.equal(state.cells[0], 6);
 });
 
+test('keeps legend names within the export-safe limit across mutations and restored state', () => {
+  const longName = '가'.repeat(16);
+  const id = addLegend(longName);
+  assert.equal(getEditableState().legends.at(-1).name, '가'.repeat(15));
+
+  renameLegend(id, ` ${'나'.repeat(16)} `);
+  assert.equal(getEditableState().legends.at(-1).name, '나'.repeat(15));
+
+  const restored = createInitialEditableState();
+  restored.legends[0].name = longName;
+  replaceEditableState(restored);
+  assert.equal(getEditableState().legends[0].name, '가'.repeat(15));
+});
+
 test('clears only cells painted with a deleted legend', () => {
   paintCell(0, 1);
   paintCell(1, 2);
