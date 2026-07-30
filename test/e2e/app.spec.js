@@ -343,11 +343,14 @@ test('shows the pending color and larger slider targets on mobile', async ({ pag
   const preview = page.locator('#unifiedColorPreview');
   await expect(hueSlider).toHaveCSS('height', '44px');
   await expect(alphaSlider).toHaveCSS('height', '44px');
+  await expect(alphaSlider).toHaveAttribute('aria-label', '불투명도');
+  await expect(alphaSlider).toHaveAttribute('aria-valuetext', '50%');
   await expect(preview.locator('.selected-color-value')).toHaveText('#FFADAD · 50%');
   await expect(preview.locator('.selected-color-swatch')).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
 
   await hueSlider.fill('120');
   await alphaSlider.fill('0.75');
+  await expect(alphaSlider).toHaveAttribute('aria-valuetext', '75%');
   await expect(preview.locator('.selected-color-value')).toHaveText('#ADFFAD · 75%');
   await expect(preview.locator('.selected-color-swatch')).toHaveCSS('background-color', 'rgba(173, 255, 173, 0.75)');
 

@@ -1,6 +1,6 @@
-import { hexToRgb } from './color.js?v=20260730-3';
-import { createLegendElement } from './legend-dom.js?v=20260730-3';
-import { getEditableState } from './model.js?v=20260730-3';
+import { hexToRgb } from './color.js?v=20260730-4';
+import { createLegendElement } from './legend-dom.js?v=20260730-4';
+import { getEditableState } from './model.js?v=20260730-4';
 
 function colorToRgba({ hex, alpha }) {
   const [r, g, b] = hexToRgb(hex);

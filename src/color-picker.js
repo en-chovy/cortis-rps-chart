@@ -1,4 +1,4 @@
-import { toColorValues } from './color.js?v=20260730-3';
+import { toColorValues } from './color.js?v=20260730-4';
 
 export function createColorPicker({
   area,
@@ -28,6 +28,7 @@ export function createColorPicker({
       const alphaPercent = Math.round(value.a * 100);
       if (swatch) swatch.style.backgroundColor = rgba;
       if (label) label.textContent = `${hex.toUpperCase()} · ${alphaPercent}%`;
+      alphaSlider.setAttribute('aria-valuetext', `${alphaPercent}%`);
       preview.setAttribute('aria-label', `선택 색상 ${hex.toUpperCase()}, 불투명도 ${alphaPercent}%`);
     }
 

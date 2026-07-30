@@ -1,5 +1,5 @@
-import { recordHistory, restoreEditableState } from './history.js?v=20260730-3';
-import { modalReturnFocus, state } from './state.js?v=20260730-3';
+import { recordHistory, restoreEditableState } from './history.js?v=20260730-4';
+import { modalReturnFocus, state } from './state.js?v=20260730-4';
 
 function needsConstrainedPopup() {
   return window.innerWidth <= 1024;
