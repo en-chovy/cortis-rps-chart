@@ -23,6 +23,20 @@ input, textarea {
     user-select: text;
     cursor: auto;
 }
+
+button,
+a,
+.timestamp-toggle,
+.legend-item,
+.circle-display,
+.editable-label,
+.paintable,
+.paintable-name,
+.menu-option,
+.menu-reset {
+    touch-action: manipulation;
+}
+
 body {
     font-family: 'Pretendard', -apple-system, sans-serif;
     display: flex; justify-content: center; align-items: flex-start;
@@ -239,6 +253,13 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 
 /* --- Mobile --- */
 @media (max-width: 480px) {
+    body {
+        min-height: 100dvh;
+        padding-top: clamp(32px, 5dvh, 64px);
+    }
+    .container {
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    }
     h1 {
         margin: clamp(24px, 4vw, 32px) 0;
     }

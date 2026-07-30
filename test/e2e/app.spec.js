@@ -14,6 +14,48 @@ test('renders the initial chart and controls', async ({ page }) => {
   await expect(page.locator('#redoButton')).toBeDisabled();
 });
 
+test('keeps the mobile viewport stable and supports single-tap interactions', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile');
+
+  await page.evaluate(() => document.fonts.ready);
+  const layout = await page.evaluate(() => {
+    const root = document.scrollingElement;
+    window.scrollTo(root.scrollWidth, root.scrollHeight);
+    return {
+      clientHeight: root.clientHeight,
+      clientWidth: root.clientWidth,
+      scrollHeight: root.scrollHeight,
+      scrollWidth: root.scrollWidth,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      visualViewportHeight: window.visualViewport?.height ?? window.innerHeight
+    };
+  });
+  expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight + 1);
+  expect(layout.scrollHeight).toBeLessThanOrEqual(layout.visualViewportHeight + 1);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+  expect(layout.scrollX).toBe(0);
+  expect(layout.scrollY).toBe(0);
+
+  const cell = page.locator('.paintable').first();
+  const legend = page.locator('#label-1');
+  await expect(cell).toHaveCSS('touch-action', 'manipulation');
+  await expect(legend).toHaveCSS('touch-action', 'manipulation');
+  await expect(page.locator('.btn-add-legend')).toHaveCSS('touch-action', 'manipulation');
+  await expect(page.locator('#unifiedSbArea')).toHaveCSS('touch-action', 'none');
+
+  await cell.tap();
+  await expect(page.locator('#cellMenu')).toBeVisible();
+  await page.locator('#cellMenu .menu-option').first().tap();
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.locator('#undoButton').tap();
+  await expect(cell).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+
+  await legend.tap();
+  await expect(page.locator('#unifiedModalOverlay')).toBeVisible();
+});
+
 test('adds a legend and supports undo and redo', async ({ page }) => {
   await page.locator('.btn-add-legend').click();
   const overlay = page.locator('#nameModalOverlay');

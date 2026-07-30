@@ -9,7 +9,17 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop', use: { browserName: 'chromium', viewport: { width: 1280, height: 900 } } },
-    { name: 'mobile', use: { browserName: 'chromium', viewport: { width: 390, height: 844 } } }
+    {
+      name: 'mobile',
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 375, height: 629 },
+        screen: { width: 375, height: 812 },
+        deviceScaleFactor: 3,
+        hasTouch: true,
+        isMobile: true
+      }
+    }
   ],
   webServer: {
     command: 'python3 -m http.server 4173',
