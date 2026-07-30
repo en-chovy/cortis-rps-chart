@@ -89,6 +89,7 @@ test('limits legend names with inline feedback in every editor', async ({ page }
   }
 
   await expect(error).toBeHidden();
+  await input.fill(allowedName);
   const heightBeforeFeedback = await modal.evaluate(element => element.offsetHeight);
   await input.fill(`${allowedName}나`);
   await expect(input).toHaveValue(allowedName);
