@@ -1,4 +1,4 @@
-import { normalizeLegendName } from './legend-name.js?v=20260730-5';
+import { normalizeLegendName } from './legend-name.js?v=20260731-4';
 
 const INITIAL_LEGENDS = [
   { id: 1, name: 'OTP', color: { hex: '#ffadad', alpha: 0.5 } },

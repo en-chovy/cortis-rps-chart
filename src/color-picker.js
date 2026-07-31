@@ -1,4 +1,4 @@
-import { toColorValues } from './color.js?v=20260730-5';
+import { toColorValues } from './color.js?v=20260731-4';
 
 export function createColorPicker({
   area,
@@ -11,6 +11,7 @@ export function createColorPicker({
   if (!area || !hueSlider || !alphaSlider || !cursor) return null;
 
   let value = { h: 0, s: 100, v: 100, a: 0.5 };
+  let dragRect = null;
 
   function render() {
     const { r, g, b, hex, rgba } = toColorValues(value);
@@ -32,9 +33,8 @@ export function createColorPicker({
       preview.setAttribute('aria-label', `선택 색상 ${hex.toUpperCase()}, 불투명도 ${alphaPercent}%`);
     }
 
-    const rect = area.getBoundingClientRect();
-    cursor.style.left = `${(value.s / 100) * rect.width}px`;
-    cursor.style.top = `${((100 - value.v) / 100) * rect.height}px`;
+    cursor.style.left = `${value.s}%`;
+    cursor.style.top = `${100 - value.v}%`;
   }
 
   function update(next) {
@@ -44,7 +44,7 @@ export function createColorPicker({
   }
 
   function updateFromPointer(event) {
-    const rect = area.getBoundingClientRect();
+    const rect = dragRect ?? area.getBoundingClientRect();
     const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
     const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
     update({
@@ -55,6 +55,7 @@ export function createColorPicker({
 
   area.addEventListener('pointerdown', event => {
     event.preventDefault();
+    dragRect = area.getBoundingClientRect();
     area.setPointerCapture(event.pointerId);
     updateFromPointer(event);
   });
@@ -63,9 +64,11 @@ export function createColorPicker({
   });
   area.addEventListener('pointerup', event => {
     if (area.hasPointerCapture(event.pointerId)) area.releasePointerCapture(event.pointerId);
+    dragRect = null;
   });
   area.addEventListener('pointercancel', event => {
     if (area.hasPointerCapture(event.pointerId)) area.releasePointerCapture(event.pointerId);
+    dragRect = null;
   });
   hueSlider.addEventListener('input', event => update({ h: Number(event.target.value) }));
   alphaSlider.addEventListener('input', event => update({ a: Number(event.target.value) }));

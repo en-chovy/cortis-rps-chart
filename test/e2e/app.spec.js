@@ -56,6 +56,110 @@ test('keeps the mobile viewport stable and supports single-tap interactions', as
   await expect(page.locator('#unifiedModalOverlay')).toBeVisible();
 });
 
+test('keeps pointer-only targets outside app-managed keyboard behavior', async ({ page }) => {
+  const firstDeleteButton = page.locator('#item-1 .btn-delete-item');
+  await expect(firstDeleteButton).toHaveAttribute('type', 'button');
+  await expect(firstDeleteButton).toHaveCSS('opacity', '0');
+  await expect(firstDeleteButton).toHaveCSS('visibility', 'hidden');
+
+  await page.locator('.paintable').first().click();
+  const options = page.locator('#cellMenu .menu-option');
+  await expect(options).toHaveCount(5);
+
+  const semantics = await options.evaluateAll(elements => elements.map(element => ({
+    tagName: element.tagName,
+    tabIndex: element.tabIndex
+  })));
+  expect(semantics).toEqual(Array.from({ length: 5 }, () => ({
+    tagName: 'DIV',
+    tabIndex: -1
+  })));
+
+  await expect(page.locator('.btn-add-legend')).toHaveAttribute('type', 'button');
+  await expect(page.locator('#resetButton')).toHaveAttribute('type', 'button');
+  await expect(page.locator('.circle-display').first()).not.toHaveAttribute('tabindex', /.+/);
+  await expect(page.locator('.editable-label').first()).not.toHaveAttribute('tabindex', /.+/);
+
+  await page.locator('#label-1').click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.circle-display').first()).not.toHaveAttribute('tabindex', /.+/);
+  await expect(page.locator('.editable-label').first()).not.toHaveAttribute('tabindex', /.+/);
+});
+
+test('uses brief layer transitions and respects reduced motion', async ({ page }) => {
+  const addButton = page.locator('.btn-add-legend');
+  const overlay = page.locator('#nameModalOverlay');
+  const panel = overlay.locator('.modal');
+
+  await addButton.click();
+  await expect(overlay).toHaveClass(/is-open/);
+  const normalDurations = await panel.evaluate(element => (
+    getComputedStyle(element).transitionDuration
+      .split(',')
+      .map(value => Number.parseFloat(value))
+  ));
+  expect(Math.max(...normalDurations)).toBeLessThanOrEqual(0.2);
+  await overlay.locator('.btn-cancel').evaluate(button => button.click());
+  await expect(overlay).toHaveClass(/is-closing/);
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toBeHidden();
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await addButton.click();
+  await expect(overlay).toBeVisible();
+  const reducedDurations = await panel.evaluate(element => (
+    getComputedStyle(element).transitionDuration
+      .split(',')
+      .map(value => Number.parseFloat(value))
+  ));
+  expect(Math.max(...reducedDurations)).toBeLessThanOrEqual(0.001);
+  await overlay.locator('.btn-cancel').click();
+  await expect(overlay).toBeHidden();
+});
+
+test('animates pointer popups out before hiding them', async ({ page }, testInfo) => {
+  const cellMenu = page.locator('#cellMenu');
+  await page.locator('.paintable').first().click();
+  await expect(cellMenu).toHaveClass(/is-open/);
+  await cellMenu.locator('.menu-option').first().evaluate(option => option.click());
+  await expect(cellMenu).toHaveClass(/is-closing/);
+  await expect(cellMenu).toBeVisible();
+  await expect(cellMenu).toBeHidden();
+
+  test.skip(testInfo.project.name !== 'desktop');
+  const visualPicker = page.locator('#visualPickerPopup');
+  await page.locator('#disp-1').click();
+  await expect(visualPicker).toHaveClass(/is-open/);
+  await visualPicker.locator('.btn-done').evaluate(button => button.click());
+  await expect(visualPicker).toHaveClass(/is-closing/);
+  await expect(visualPicker).toBeVisible();
+  await expect(visualPicker).toBeHidden();
+});
+
+test('keeps a newly opened modal active while an earlier popup exits', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop');
+
+  await page.locator('#disp-1').click();
+  await expect(page.locator('#visualPickerPopup')).toBeVisible();
+  await page.locator('#resetButton').click();
+  await expect(page.locator('#resetModalOverlay')).toBeVisible();
+  await page.waitForTimeout(220);
+  await expect(page.locator('#visualPickerPopup')).toBeHidden();
+  await expect(page.locator('#resetModalOverlay')).toBeVisible();
+});
+
+test('uses the unified editor on a wide touch-only viewport', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile');
+  await page.setViewportSize({ width: 768, height: 900 });
+
+  await page.locator('#label-1').tap();
+  const unifiedModal = page.locator('#unifiedModalOverlay .unified-modal');
+  await expect(unifiedModal).toBeVisible();
+  await expect(page.locator('#nameModalOverlay')).toBeHidden();
+  await expect(page.locator('#unifiedDeleteBtn')).toHaveCSS('height', '44px');
+  await expect(page.locator('.unified-action-buttons')).toHaveCSS('display', 'flex');
+});
+
 test('keeps plain modals at least 16 pixels from narrow viewport edges', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile');
 
@@ -100,6 +204,102 @@ test('adds a legend and supports undo and redo', async ({ page }) => {
   await expect(page.locator('#label-6')).toHaveCount(0);
   await page.locator('#redoButton').click();
   await expect(page.locator('#label-6')).toHaveText('테스트');
+});
+
+test('supports only the declared undo and redo shortcuts', async ({ page }) => {
+  const cell = page.locator('.paintable').first();
+  await cell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.keyboard.press('Control+Y');
+  await page.keyboard.press('Control+Alt+Z');
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.keyboard.press('Meta+Z');
+  await expect(cell).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await page.keyboard.press('Meta+Shift+Z');
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.keyboard.press('Control+Z');
+  await expect(cell).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await page.keyboard.press('Control+Y');
+  await page.keyboard.press('Control+Alt+Shift+Z');
+  await expect(cell).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await page.keyboard.press('Control+Shift+Z');
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+});
+
+test('uses plain Enter to complete legend add and edit', async ({ page }, testInfo) => {
+  await page.locator('.btn-add-legend').click();
+  await page.locator('#nameInput').fill('키보드 추가');
+  await page.keyboard.press('Shift+Enter');
+  await expect(page.locator('#nameModalOverlay')).toBeVisible();
+  await expect(page.locator('#label-6')).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#label-6')).toHaveText('키보드 추가');
+
+  await page.locator('#label-1').click();
+  const overlay = page.locator(
+    testInfo.project.name === 'mobile' ? '#unifiedModalOverlay' : '#nameModalOverlay'
+  );
+  const input = page.locator(
+    testInfo.project.name === 'mobile' ? '#unifiedNameInput' : '#nameInput'
+  );
+  await input.fill('키보드 수정');
+  await page.keyboard.press('Alt+Enter');
+  await expect(overlay).toBeVisible();
+  await expect(page.locator('#label-1')).toHaveText('OTP');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#label-1')).toHaveText('키보드 수정');
+});
+
+test('leaves Enter on focused modal buttons to the browser', async ({ page }, testInfo) => {
+  await page.locator('.btn-add-legend').click();
+  await page.locator('#nameInput').fill('저장되면 안 됨');
+  await page.locator('#nameModalOverlay .btn-cancel').press('Enter');
+  await expect(page.locator('#nameModalOverlay')).toBeHidden();
+  await expect(page.locator('#label-6')).toHaveCount(0);
+
+  if (testInfo.project.name === 'mobile') {
+    await page.locator('#label-1').click();
+    await page.locator('#unifiedNameInput').fill('저장되면 안 됨');
+    await page.locator('#unifiedCancelBtn').press('Enter');
+    await expect(page.locator('#unifiedModalOverlay')).toBeHidden();
+    await expect(page.locator('#label-1')).toHaveText('OTP');
+  }
+});
+
+test('does not globally confirm destructive modals with Enter', async ({ page }, testInfo) => {
+  await page.locator('#resetButton').click();
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#resetModalOverlay')).toBeVisible();
+  await expect(page.locator('.legend-item')).toHaveCount(5);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#resetModalOverlay')).toBeHidden();
+
+  if (testInfo.project.name === 'desktop') {
+    await page.locator('#item-1').hover();
+    await page.locator('#item-1 .btn-delete-item').click();
+    await page.evaluate(() => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    });
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#deleteModalOverlay')).toBeVisible();
+    await expect(page.locator('#item-1')).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#deleteModalOverlay')).toBeHidden();
+  }
+});
+
+test('closes the cell palette with Escape', async ({ page }) => {
+  await page.locator('.paintable').first().click();
+  await expect(page.locator('#cellMenu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#cellMenu')).toBeHidden();
 });
 
 test('limits legend names with inline feedback in every editor', async ({ page }, testInfo) => {
@@ -193,6 +393,56 @@ test('paints a cell and restores it through history', async ({ page }) => {
   await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
 });
 
+test('preserves existing legend elements during non-structural updates', async ({ page }) => {
+  const firstLegend = page.locator('#item-1');
+  await firstLegend.evaluate(element => {
+    element.dataset.renderIdentity = 'preserved';
+  });
+
+  const cell = page.locator('.paintable').first();
+  await cell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+
+  await expect(firstLegend).toHaveAttribute('data-render-identity', 'preserved');
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+});
+
+test('preserves keyed legends through add, rename, and rapid delete undo', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop');
+  const firstLegend = page.locator('#item-1');
+  const secondLegend = page.locator('#item-2');
+  await firstLegend.evaluate(element => {
+    element.dataset.renderIdentity = 'first';
+  });
+  await secondLegend.evaluate(element => {
+    element.dataset.renderIdentity = 'second';
+  });
+
+  await page.locator('.btn-add-legend').click();
+  await page.locator('#nameInput').fill('추가');
+  await page.locator('#nameModalOverlay .btn-save').click();
+  await expect(firstLegend).toHaveAttribute('data-render-identity', 'first');
+  await expect(secondLegend).toHaveAttribute('data-render-identity', 'second');
+
+  await page.locator('#label-1').click();
+  await page.locator('#nameInput').fill('수정');
+  await page.locator('#nameModalOverlay .btn-save').click();
+  await expect(firstLegend).toHaveAttribute('data-render-identity', 'first');
+  await expect(page.locator('#label-1')).toHaveText('수정');
+
+  await firstLegend.hover();
+  await firstLegend.locator('.btn-delete-item').click();
+  await page.locator('#confirmDelBtn').evaluate(button => button.click());
+  await expect(firstLegend).toHaveClass(/is-leaving/);
+  await page.locator('#undoButton').evaluate(button => button.click());
+  await page.waitForTimeout(220);
+
+  await expect(firstLegend).toHaveCount(1);
+  await expect(firstLegend).not.toHaveClass(/is-leaving/);
+  await expect(firstLegend).toHaveAttribute('data-render-identity', 'first');
+  await expect(secondLegend).toHaveAttribute('data-render-identity', 'second');
+});
+
 test('restores editable content after reload and resets it explicitly', async ({ page }) => {
   await page.locator('.btn-add-legend').click();
   await page.locator('#nameInput').fill('새 범례');
@@ -215,7 +465,6 @@ test('restores editable content after reload and resets it explicitly', async ({
 
   await page.locator('#resetButton').click();
   await expect(page.locator('#resetModalOverlay')).toBeVisible();
-  await expect(page.locator('#cancelResetBtn')).toBeFocused();
   await page.locator('#confirmResetBtn').click();
   await expect(page.locator('.legend-item')).toHaveCount(5);
   await expect(page.locator('#label-6')).toHaveCount(0);
@@ -323,20 +572,26 @@ test('paints a full column from its name cell', async ({ page }) => {
   }
 });
 
-test('closes the name modal with Escape and restores focus', async ({ page }) => {
-  const addButton = page.locator('.btn-add-legend');
-  await addButton.click();
+test('closes legend editors with Escape', async ({ page }, testInfo) => {
+  await page.locator('.btn-add-legend').click();
   const overlay = page.locator('#nameModalOverlay');
   const input = page.locator('#nameInput');
   await expect(input).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(overlay).toBeHidden();
-  await expect(addButton).toBeFocused();
+
+  await page.locator('#label-1').click();
+  const editOverlay = page.locator(
+    testInfo.project.name === 'mobile' ? '#unifiedModalOverlay' : '#nameModalOverlay'
+  );
+  await expect(editOverlay).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(editOverlay).toBeHidden();
 });
 
 test('does not leave the legend delete button visible after mouse editing', async ({ page }, testInfo) => {
   const deleteButton = page.locator('#item-1 .btn-delete-item');
-  await expect(deleteButton).toBeHidden();
+  await expect(deleteButton).toHaveCSS('opacity', '0');
 
   await page.locator('#label-1').click();
   const overlay = page.locator(testInfo.project.name === 'mobile' ? '#unifiedModalOverlay' : '#nameModalOverlay');
@@ -344,7 +599,7 @@ test('does not leave the legend delete button visible after mouse editing', asyn
   await overlay.locator('.btn-cancel').click();
 
   await expect(overlay).toBeHidden();
-  await expect(deleteButton).toBeHidden();
+  await expect(deleteButton).toHaveCSS('opacity', '0');
 });
 
 test('opens the correct legend editor for the viewport', async ({ page }, testInfo) => {
@@ -363,12 +618,16 @@ test('edits color through the shared picker and supports undo', async ({ page },
 
   if (testInfo.project.name === 'mobile') {
     await page.locator('#label-1').click();
+    await expect(page.locator('html')).not.toHaveClass(/is-adjusting-color/);
     await page.locator('#unifiedHueSlider').fill('120');
     await page.locator('#unifiedSaveBtn').click();
   } else {
     await page.locator('#disp-1').click();
+    await expect(page.locator('html')).toHaveClass(/is-adjusting-color/);
+    await expect(page.locator('.paintable').first()).toHaveCSS('transition-duration', '0s');
     await page.locator('#hueSlider').fill('120');
     await page.locator('#visualPickerPopup .btn-done').click();
+    await expect(page.locator('html')).not.toHaveClass(/is-adjusting-color/);
   }
 
   const changed = await page.evaluate(() => (
@@ -380,6 +639,28 @@ test('edits color through the shared picker and supports undo', async ({ page },
   await expect.poll(() => page.evaluate(() => (
     getComputedStyle(document.documentElement).getPropertyValue('--color-1').trim()
   ))).toBe(original);
+});
+
+test('uses Escape and plain Enter for desktop color editing', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop');
+  const readColor = () => page.evaluate(() => (
+    getComputedStyle(document.documentElement).getPropertyValue('--color-1').trim()
+  ));
+  const original = await readColor();
+
+  await page.locator('#disp-1').click();
+  await page.locator('#hueSlider').fill('120');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#visualPickerPopup')).toBeHidden();
+  await expect.poll(readColor).toBe(original);
+
+  await page.locator('#disp-1').click();
+  await page.locator('#hueSlider').fill('120');
+  await page.keyboard.press('Shift+Enter');
+  await expect(page.locator('#visualPickerPopup')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#visualPickerPopup')).toBeHidden();
+  await expect.poll(readColor).not.toBe(original);
 });
 
 test('shows the pending color and larger slider targets on mobile', async ({ page }, testInfo) => {
@@ -418,8 +699,12 @@ test('downloads a non-empty PNG containing the painted chart color', async ({ pa
   await page.locator('#cellMenu .menu-option').first().click();
 
   const downloadPromise = page.waitForEvent('download');
-  await page.locator('#saveImageButton').click();
+  const saveButton = page.locator('#saveImageButton');
+  await saveButton.click();
   const download = await downloadPromise;
+  await expect(saveButton.locator('span')).toHaveText('저장 완료');
+  await expect(saveButton).toHaveClass(/is-success/);
+  await expect(page.locator('#imageSaveStatus')).toHaveText('이미지 저장이 완료되었습니다.');
   const stream = await download.createReadStream();
   const chunks = [];
   for await (const chunk of stream) chunks.push(chunk);
@@ -455,6 +740,27 @@ test('downloads a non-empty PNG containing the painted chart color', async ({ pa
 
   expect(pixels.nonWhite).toBeGreaterThan(100_000);
   expect(pixels.otpPink).toBeGreaterThan(40_000);
+  await expect(saveButton.locator('span')).toHaveText('이미지 저장', { timeout: 2500 });
+  await expect(saveButton).not.toHaveClass(/is-success/);
+  await expect(page.locator('#imageSaveStatus')).toHaveText('이미지 저장이 완료되었습니다.');
+});
+
+test('recovers the save control and announces an image export failure', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop');
+  await page.evaluate(() => {
+    HTMLCanvasElement.prototype.toBlob = function toBlob(callback) {
+      callback(null);
+    };
+  });
+
+  page.once('dialog', dialog => dialog.accept());
+  const saveButton = page.locator('#saveImageButton');
+  await saveButton.click();
+  await expect(page.locator('#imageSaveStatus')).toHaveText('이미지 저장에 실패했습니다.');
+  await expect(saveButton).toBeEnabled();
+  await expect(saveButton.locator('span')).toHaveText('이미지 저장');
+  await expect(saveButton).not.toHaveAttribute('aria-busy');
+  await expect(saveButton).not.toHaveClass(/is-success/);
 });
 
 test('downloads a PNG when a legend name contains emoji', async ({ page }) => {

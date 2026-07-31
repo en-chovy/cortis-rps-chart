@@ -80,6 +80,10 @@ function createImageExportFrame() {
   const legendClone = legend.cloneNode(true);
   const chartClone = chartFrame.cloneNode(true);
   legendClone.querySelectorAll('.btn-add-legend, .btn-delete-item').forEach(button => button.remove());
+  legendClone.querySelectorAll('.legend-item.is-leaving').forEach(item => item.remove());
+  legendClone.querySelectorAll('.legend-item').forEach(item => (
+    item.classList.remove('is-entering', 'is-leaving')
+  ));
 
   content.append(headingClone, legendClone, chartClone);
   frame.appendChild(content);
@@ -248,14 +252,18 @@ function canvasToBlob(canvas) {
 }
 
 async function saveChartImage() {
+  const successFeedbackDuration = 1000;
   const saveButton = document.getElementById('saveImageButton');
   const buttonLabel = saveButton?.querySelector('span');
+  const saveStatus = document.getElementById('imageSaveStatus');
   if (!saveButton || !buttonLabel || saveButton.disabled) return;
 
   saveButton.disabled = true;
   saveButton.setAttribute('aria-busy', 'true');
   buttonLabel.textContent = '이미지 만드는 중…';
+  if (saveStatus) saveStatus.textContent = '이미지 파일을 만드는 중입니다.';
   let exportFrame = null;
+  let didSave = false;
 
   try {
     await document.fonts?.ready;
@@ -272,13 +280,24 @@ async function saveChartImage() {
     downloadLink.click();
     downloadLink.remove();
     setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    didSave = true;
   } catch (error) {
     console.error('Failed to save chart image:', error);
+    if (saveStatus) saveStatus.textContent = '이미지 저장에 실패했습니다.';
     window.alert('이미지를 만드는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
   } finally {
     exportFrame?.remove();
-    saveButton.disabled = false;
     saveButton.removeAttribute('aria-busy');
+
+    if (didSave) {
+      saveButton.classList.add('is-success');
+      buttonLabel.textContent = '저장 완료';
+      if (saveStatus) saveStatus.textContent = '이미지 저장이 완료되었습니다.';
+      await new Promise(resolve => setTimeout(resolve, successFeedbackDuration));
+      saveButton.classList.remove('is-success');
+    }
+
+    saveButton.disabled = false;
     buttonLabel.textContent = '이미지 저장';
   }
 }

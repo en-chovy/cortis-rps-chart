@@ -12,5 +12,3 @@ export const state = {
   visualPickerSession: null,
   isImeComposing: false
 };
-
-export const modalReturnFocus = new Map();

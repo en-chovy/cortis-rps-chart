@@ -1,81 +1,113 @@
-import { recordHistory, restoreEditableState } from './history.js?v=20260730-5';
-import { modalReturnFocus, state } from './state.js?v=20260730-5';
+import { recordHistory, restoreEditableState } from './history.js?v=20260731-4';
+import { state } from './state.js?v=20260731-4';
+
+const LAYER_HIDE_FALLBACK_MS = 150;
+const layerHideTimers = new WeakMap();
+const layerOpenFrames = new WeakMap();
 
 function needsConstrainedPopup() {
   return window.innerWidth <= 1024;
 }
 
-export function focusTrigger(trigger) {
-  let focusTarget = trigger?.isConnected ? trigger : null;
-
-  if (!focusTarget && trigger instanceof Element) {
-    if (trigger.id) focusTarget = document.getElementById(trigger.id);
-
-    if (!focusTarget) {
-      const itemId = trigger.closest('.legend-item')?.id;
-      if (itemId && trigger.matches('.circle-display, .editable-label, .btn-delete-item')) {
-        const selector = trigger.matches('.circle-display')
-          ? '.circle-display'
-          : trigger.matches('.editable-label')
-            ? '.editable-label'
-            : '.btn-delete-item';
-        focusTarget = document.querySelector(`#${itemId} ${selector}`);
-      }
-    }
-  }
-
-  if (!focusTarget) focusTarget = document.querySelector('.btn-add-legend');
-  if (!focusTarget) return;
-
-  if (!focusTarget.matches('button, input, select, textarea, a[href], [tabindex]')) {
-    focusTarget.tabIndex = -1;
-  }
-
-  requestAnimationFrame(() => focusTarget.focus({ preventScroll: true }));
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export function showModal(id, trigger) {
+function cancelLayerTransition(layer) {
+  const hideTimer = layerHideTimers.get(layer);
+  if (hideTimer) clearTimeout(hideTimer);
+  layerHideTimers.delete(layer);
+
+  const openFrame = layerOpenFrames.get(layer);
+  if (openFrame) cancelAnimationFrame(openFrame);
+  layerOpenFrames.delete(layer);
+}
+
+function showLayer(layer, display = 'flex') {
+  if (!layer) return;
+  const isAlreadyOpen = layer.classList.contains('is-open')
+    && !layer.classList.contains('is-closing')
+    && getComputedStyle(layer).display !== 'none';
+  if (isAlreadyOpen) return;
+
+  cancelLayerTransition(layer);
+  layer.classList.remove('is-open', 'is-closing');
+  layer.style.display = display;
+  layer.removeAttribute('aria-hidden');
+
+  if (prefersReducedMotion()) {
+    layer.classList.add('is-open');
+    return;
+  }
+
+  const frame = requestAnimationFrame(() => {
+    layerOpenFrames.delete(layer);
+    if (layer.style.display === 'none') return;
+    layer.classList.add('is-open');
+  });
+  layerOpenFrames.set(layer, frame);
+}
+
+function hideLayer(layer) {
+  if (!layer || getComputedStyle(layer).display === 'none') {
+    return;
+  }
+  if (layer.classList.contains('is-closing')) return;
+
+  cancelLayerTransition(layer);
+  const finish = () => {
+    layerHideTimers.delete(layer);
+    layer.style.display = 'none';
+    layer.classList.remove('is-open', 'is-closing');
+    layer.setAttribute('aria-hidden', 'true');
+  };
+
+  if (prefersReducedMotion()) {
+    finish();
+    return;
+  }
+
+  layer.classList.remove('is-open');
+  layer.classList.add('is-closing');
+  layerHideTimers.set(layer, setTimeout(finish, LAYER_HIDE_FALLBACK_MS));
+}
+
+export function showModal(id) {
   const modal = document.getElementById(id);
   if (!modal) return;
-  modalReturnFocus.set(id, trigger);
-  modal.style.display = 'flex';
+  showLayer(modal);
 }
 
-export function closeVisualPicker({ commit = true, restoreFocus = true } = {}) {
+export function closeVisualPicker({ commit = true } = {}) {
   const visual = document.getElementById('visualPickerPopup');
   const session = state.visualPickerSession;
-
-  if (visual) visual.style.display = 'none';
 
   if (session) {
     if (commit) recordHistory('legend-color', session.before);
     else restoreEditableState(session.before);
-    if (restoreFocus) focusTrigger(session.trigger);
   }
 
+  document.documentElement.classList.remove('is-adjusting-color');
   state.visualPickerSession = null;
   state.editingId = null;
+  hideLayer(visual);
 }
 
 export function closeAllPopups(options = {}) {
   const menu = document.getElementById('cellMenu');
   closeVisualPicker(options);
-  if (menu) menu.style.display = 'none';
+  hideLayer(menu);
 }
 
-export function closeModal(id, { restoreFocus = true } = {}) {
+export function closeModal(id) {
   const modal = document.getElementById(id);
-  if (modal) modal.style.display = 'none';
-  const trigger = modalReturnFocus.get(id);
-  modalReturnFocus.delete(id);
-  if (restoreFocus) focusTrigger(trigger);
+  if (!modal || modal.classList.contains('is-closing')) return;
+  hideLayer(modal);
 }
 
 function closeAllEditingUI() {
-  closeAllPopups({ commit: true, restoreFocus: false });
-  document.querySelectorAll('.modal-overlay').forEach(overlay => (
-    closeModal(overlay.id, { restoreFocus: false })
-  ));
+  closeAllPopups({ commit: true });
+  document.querySelectorAll('.modal-overlay').forEach(overlay => closeModal(overlay.id));
 
   if (state.popupRepositionFrame !== null) {
     cancelAnimationFrame(state.popupRepositionFrame);
@@ -107,7 +139,7 @@ export function handleViewportResize() {
 export function positionPopup(popup, target, isBelow) {
   if (!popup || !target) return;
 
-  popup.style.display = 'flex';
+  showLayer(popup);
   const rect = target.getBoundingClientRect();
   const container = document.querySelector('.container');
   if (!container) return;
