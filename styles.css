@@ -1,5 +1,3 @@
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
-
 /* --- CONFIGURATION & VARIABLES --- */
 :root {
     --ios-bg: rgba(255, 255, 255, 0.95);
@@ -50,7 +48,22 @@ a,
 }
 
 body {
-    font-family: 'Pretendard', -apple-system, sans-serif;
+    font-family:
+        "Pretendard Variable",
+        Pretendard,
+        -apple-system,
+        BlinkMacSystemFont,
+        system-ui,
+        Roboto,
+        "Helvetica Neue",
+        "Segoe UI",
+        "Apple SD Gothic Neo",
+        "Noto Sans KR",
+        "Malgun Gothic",
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        sans-serif;
     display: flex; justify-content: center; align-items: flex-start;
     min-height: 100vh; margin: 0; padding-top: clamp(32px, 5vh, 64px); box-sizing: border-box;
     /* background-color: #f2f2f7; */
@@ -386,7 +399,13 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     box-sizing: border-box;
     width: min(350px, calc(100vw - 32px));
 }
-.modal h3 { margin-top: 0; font-size: 20px; color: #1c1c1e; }
+.modal h3 {
+    margin-top: 0;
+    color: #1c1c1e;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.2;
+}
 .modal p { color: #8e8e93; margin-bottom: 20px; }
 .modal input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #d1d1d6; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
 .modal .legend-name-input {

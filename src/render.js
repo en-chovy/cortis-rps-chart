@@ -1,6 +1,6 @@
-import { hexToRgb } from './color.js?v=20260731-4';
-import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260731-4';
-import { getEditableState } from './model.js?v=20260731-4';
+import { hexToRgb } from './color.js?v=20260731-5';
+import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260731-5';
+import { getEditableState } from './model.js?v=20260731-5';
 
 const LEGEND_EXIT_FALLBACK_MS = 150;
 const legendEntryFrames = new WeakMap();

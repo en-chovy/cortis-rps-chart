@@ -4,8 +4,36 @@ const EXPORT_PRESET = {
   contentWidth: 443
 };
 
+const EXPORT_TEXT_SELECTOR = [
+  '.container > h1',
+  '#legendContainer .legend-item:not(.is-leaving) .editable-label',
+  '#rpsTable th',
+  '#rpsTable td',
+  '#chartTimestamp:not([hidden])'
+].join(', ');
+
 function getCanvasFont(style) {
   return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+}
+
+async function loadExportFonts() {
+  const fontSet = document.fonts;
+  if (!fontSet?.load) return;
+
+  const textsByFont = new Map();
+  document.querySelectorAll(EXPORT_TEXT_SELECTOR).forEach(element => {
+    const text = element.textContent.trim();
+    if (!text) return;
+
+    const font = getCanvasFont(getComputedStyle(element));
+    if (!textsByFont.has(font)) textsByFont.set(font, new Set());
+    textsByFont.get(font).add(text);
+  });
+
+  await Promise.all(
+    [...textsByFont].map(([font, texts]) => fontSet.load(font, [...texts].join('')))
+  );
+  await fontSet.ready;
 }
 
 function getLineHeight(style) {
@@ -266,7 +294,7 @@ async function saveChartImage() {
   let didSave = false;
 
   try {
-    await document.fonts?.ready;
+    await loadExportFonts();
     exportFrame = createImageExportFrame();
     if (!exportFrame) throw new Error('image export area is unavailable');
 

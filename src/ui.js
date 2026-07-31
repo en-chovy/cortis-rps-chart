@@ -1,5 +1,5 @@
-import { recordHistory, restoreEditableState } from './history.js?v=20260731-4';
-import { state } from './state.js?v=20260731-4';
+import { recordHistory, restoreEditableState } from './history.js?v=20260731-5';
+import { state } from './state.js?v=20260731-5';
 
 const LAYER_HIDE_FALLBACK_MS = 150;
 const layerHideTimers = new WeakMap();
