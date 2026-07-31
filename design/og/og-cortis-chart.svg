@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">CORTIS RPS CHART — 콜페스 취향표</title>
+  <desc id="description">간편하게 칠하는 나의 취향을 보여 주는 이름 없는 축약 차트</desc>
+
+  <defs>
+    <clipPath id="chart-clip">
+      <rect x="444" y="322" width="312" height="180" rx="12" />
+    </clipPath>
+  </defs>
+
+  <rect width="1200" height="630" fill="#ffffff" />
+
+  <g
+    fill="#636366"
+    font-family="Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif"
+    text-anchor="middle"
+  >
+    <text x="600" y="121" font-size="20" font-weight="500" letter-spacing="2.4">CORTIS RPS CHART</text>
+    <text x="600" y="195" fill="#1d1d1f" font-size="48" font-weight="600" letter-spacing="-1.2">콜페스 취향표</text>
+    <text x="600" y="244" fill="#1d1d1f" font-size="24" font-weight="400" letter-spacing="-0.35">간편하게 칠하는 나의 취향</text>
+  </g>
+
+  <g clip-path="url(#chart-clip)">
+    <rect x="444" y="322" width="312" height="180" fill="#ffffff" />
+
+    <rect x="444" y="322" width="312" height="30" fill="#636366" />
+    <rect x="444" y="322" width="52" height="180" fill="#636366" />
+
+    <rect x="496" y="352" width="52" height="30" fill="#f7f7f8" />
+    <rect x="548" y="382" width="52" height="30" fill="#f7f7f8" />
+    <rect x="600" y="412" width="52" height="30" fill="#f7f7f8" />
+    <rect x="652" y="442" width="52" height="30" fill="#f7f7f8" />
+    <rect x="704" y="472" width="52" height="30" fill="#f7f7f8" />
+
+    <rect x="548" y="352" width="52" height="30" fill="#ffadad" fill-opacity="0.5" />
+    <rect x="652" y="352" width="52" height="30" fill="#9bf6ff" fill-opacity="0.5" />
+    <rect x="496" y="382" width="52" height="30" fill="#ffd6a5" fill-opacity="0.5" />
+    <rect x="704" y="412" width="52" height="30" fill="#caffbf" fill-opacity="0.5" />
+    <rect x="600" y="442" width="52" height="30" fill="#fdffb6" fill-opacity="0.5" />
+
+    <g stroke="#333333" stroke-width="2">
+      <path d="M496 322V502 M548 322V502 M600 322V502 M652 322V502 M704 322V502" />
+      <path d="M444 352H756 M444 382H756 M444 412H756 M444 442H756 M444 472H756" />
+    </g>
+  </g>
+
+  <rect x="444" y="322" width="312" height="180" rx="12" fill="none" stroke="#333333" stroke-width="2" />
+</svg>
