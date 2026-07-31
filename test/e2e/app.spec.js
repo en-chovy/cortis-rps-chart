@@ -56,6 +56,38 @@ test('keeps the mobile viewport stable and supports single-tap interactions', as
   await expect(page.locator('#unifiedModalOverlay')).toBeVisible();
 });
 
+test('keeps plain modals at least 16 pixels from narrow viewport edges', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile');
+
+  const expectModalGutters = async overlaySelector => {
+    const metrics = await page.locator(`${overlaySelector} .modal`).evaluate(modal => {
+      const overlay = modal.parentElement;
+      return {
+        left: modal.offsetLeft,
+        right: overlay.clientWidth - modal.offsetLeft - modal.offsetWidth
+      };
+    });
+
+    expect(metrics.left).toBeGreaterThanOrEqual(16);
+    expect(metrics.right).toBeGreaterThanOrEqual(16);
+    expect(Math.abs(metrics.left - metrics.right)).toBeLessThanOrEqual(1);
+  };
+
+  for (const width of [320, 280]) {
+    await page.setViewportSize({ width, height: 629 });
+
+    await page.locator('.btn-add-legend').tap();
+    await expect(page.locator('#nameModalOverlay')).toBeVisible();
+    await expectModalGutters('#nameModalOverlay');
+    await page.locator('#nameModalOverlay .btn-cancel').tap();
+
+    await page.locator('#resetButton').tap();
+    await expect(page.locator('#resetModalOverlay')).toBeVisible();
+    await expectModalGutters('#resetModalOverlay');
+    await page.locator('#cancelResetBtn').tap();
+  }
+});
+
 test('adds a legend and supports undo and redo', async ({ page }) => {
   await page.locator('.btn-add-legend').click();
   const overlay = page.locator('#nameModalOverlay');

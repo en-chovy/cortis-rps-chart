@@ -266,6 +266,10 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     width: 300px; box-shadow: var(--ios-shadow); text-align: left;
     animation: modalPop 0.3s cubic-bezier(0.2, 1, 0.3, 1);
 }
+.modal:not(.unified-modal) {
+    box-sizing: border-box;
+    width: min(350px, calc(100vw - 32px));
+}
 @keyframes modalPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal h3 { margin-top: 0; font-size: 20px; color: #1c1c1e; }
 .modal p { color: #8e8e93; margin-bottom: 20px; }
