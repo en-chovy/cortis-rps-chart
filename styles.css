@@ -12,6 +12,16 @@
     --ease-enter: cubic-bezier(0.2, 0.8, 0.2, 1);
     --ease-exit: cubic-bezier(0.4, 0, 1, 1);
     --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --color-1: #ffadad;
+    --color-1-a: rgba(255, 173, 173, 0.5);
+    --color-2: #ffd6a5;
+    --color-2-a: rgba(255, 214, 165, 0.5);
+    --color-3: #fdffb6;
+    --color-3-a: rgba(253, 255, 182, 0.5);
+    --color-4: #caffbf;
+    --color-4-a: rgba(202, 255, 191, 0.5);
+    --color-5: #9bf6ff;
+    --color-5-a: rgba(155, 246, 255, 0.5);
 }
 
 /* --- GLOBAL STYLES --- */
@@ -80,6 +90,7 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 
 /* --- LEGEND SECTION --- */
 .legend-wrapper { display: flex; justify-content: center; align-items: center; gap: clamp(10px, 2.5vw, 20px); margin-bottom: clamp(28px, 5vw, 40px); flex-wrap: wrap; }
+.is-restoring-chart-state .legend-wrapper { visibility: hidden; }
 .legend-item {
     display: flex; align-items: center; gap: clamp(6px, 1.25vw, 10px); position: relative;
     opacity: 1; transform: translateY(0) scale(1);

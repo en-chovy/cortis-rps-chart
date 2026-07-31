@@ -1,6 +1,6 @@
-import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260731-5';
-import { createColorPicker } from './src/color-picker.js?v=20260731-5';
-import { initExportControls } from './src/export.js?v=20260731-5';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260731-6';
+import { createColorPicker } from './src/color-picker.js?v=20260731-6';
+import { initExportControls } from './src/export.js?v=20260731-6';
 import {
   captureEditableState,
   clearHistory,
@@ -9,7 +9,7 @@ import {
   initHistoryControls,
   redoEdit,
   undoEdit
-} from './src/history.js?v=20260731-5';
+} from './src/history.js?v=20260731-6';
 import {
   addLegend,
   createInitialEditableState,
@@ -22,18 +22,18 @@ import {
   renameLegend,
   replaceEditableState,
   setLegendColor
-} from './src/model.js?v=20260731-5';
+} from './src/model.js?v=20260731-6';
 import {
   LEGEND_NAME_MAX_LENGTH,
   limitLegendName
-} from './src/legend-name.js?v=20260731-5';
+} from './src/legend-name.js?v=20260731-6';
 import {
   clearEditableState,
   loadEditableState,
   saveEditableState
-} from './src/persistence.js?v=20260731-5';
-import { initializeCells, renderApp, renderColors } from './src/render.js?v=20260731-5';
-import { state } from './src/state.js?v=20260731-5';
+} from './src/persistence.js?v=20260731-6';
+import { initializeCells, renderApp, renderColors } from './src/render.js?v=20260731-6';
+import { state } from './src/state.js?v=20260731-6';
 import {
   closeAllPopups,
   closeModal,
@@ -41,7 +41,7 @@ import {
   handleViewportResize,
   positionPopup,
   showModal
-} from './src/ui.js?v=20260731-5';
+} from './src/ui.js?v=20260731-6';
 
 let desktopPicker = null;
 let unifiedPicker = null;
@@ -533,15 +533,20 @@ function initGlobalInteraction() {
 }
 
 (function boot() {
-  const persistedState = loadEditableState();
-  if (persistedState) replaceEditableState(persistedState);
+  try {
+    const persistedState = loadEditableState();
+    if (persistedState) replaceEditableState(persistedState);
 
-  initializeCells();
-  configureHistory({
-    renderApp,
-    persistEditableState: saveEditableState
-  });
-  renderApp();
+    initializeCells();
+    configureHistory({
+      renderApp,
+      persistEditableState: saveEditableState
+    });
+    renderApp();
+  } finally {
+    document.documentElement.classList.remove('is-restoring-chart-state');
+  }
+
   initColorPickers();
   initLegendDelegation();
   initModalButtons();

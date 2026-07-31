@@ -19,6 +19,18 @@ export default defineConfig({
         hasTouch: true,
         isMobile: true
       }
+    },
+    {
+      name: 'mobile-webkit-bootstrap',
+      testMatch: /legend-bootstrap\.spec\.js/,
+      use: {
+        browserName: 'webkit',
+        viewport: { width: 375, height: 629 },
+        screen: { width: 375, height: 812 },
+        deviceScaleFactor: 3,
+        hasTouch: true,
+        isMobile: true
+      }
     }
   ],
   webServer: {

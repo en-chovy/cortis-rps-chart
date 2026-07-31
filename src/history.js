@@ -1,4 +1,4 @@
-import { cloneEditableState, getEditableState, replaceEditableState } from './model.js?v=20260731-5';
+import { cloneEditableState, getEditableState, replaceEditableState } from './model.js?v=20260731-6';
 
 const HISTORY_LIMIT = 100;
 const undoStack = [];

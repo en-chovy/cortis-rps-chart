@@ -1,6 +1,6 @@
-import { hexToRgb } from './color.js?v=20260731-5';
-import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260731-5';
-import { getEditableState } from './model.js?v=20260731-5';
+import { hexToRgb } from './color.js?v=20260731-6';
+import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260731-6';
+import { getEditableState } from './model.js?v=20260731-6';
 
 const LEGEND_EXIT_FALLBACK_MS = 150;
 const legendEntryFrames = new WeakMap();
@@ -104,7 +104,10 @@ export function renderLegends() {
     if (isNew && hasRenderedLegends) animateLegendEntry(item);
   });
 
-  existingItems.forEach(removeLegendItem);
+  existingItems.forEach(item => {
+    if (hasRenderedLegends) removeLegendItem(item);
+    else item.remove();
+  });
   hasRenderedLegends = true;
 }
 

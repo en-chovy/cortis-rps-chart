@@ -1,4 +1,4 @@
-import { toColorValues } from './color.js?v=20260731-5';
+import { toColorValues } from './color.js?v=20260731-6';
 
 export function createColorPicker({
   area,
