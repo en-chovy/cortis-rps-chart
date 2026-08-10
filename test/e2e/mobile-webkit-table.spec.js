@@ -95,7 +95,10 @@ test('keeps four remaining columns aligned after deleting a middle column', asyn
     };
   });
 
-  expect(geometry.frameWidth).toBeCloseTo(initialGeometry.frameWidth * 5 / 6, 1);
+  expect(geometry.frameWidth).toBeCloseTo(
+    initialGeometry.frameWidth - initialGeometry.cellWidth,
+    1
+  );
   expect(geometry.shellWidth).toBeCloseTo(geometry.frameWidth, 1);
   expect(geometry.tableWidth).toBeCloseTo(
     geometry.shellWidth - geometry.shellBorderWidth * 2,
@@ -142,34 +145,262 @@ test('keeps four remaining columns aligned after deleting a middle column', asyn
     .toBeCloseTo(geometry.frameWidth, 1);
 });
 
+test('renders every live table border as an equal device-pixel run', async ({
+  page
+}, testInfo) => {
+  test.skip(!['mobile', 'mobile-webkit-table'].includes(testInfo.project.name));
+  await page.evaluate(() => document.fonts.ready);
+  await page.addStyleTag({
+    content: '#rpsTable th, #rpsTable td { color: transparent !important; text-shadow: none !important; }'
+  });
+
+  const scanTableBorders = async () => {
+    const shell = page.locator('.table-shell');
+    const geometry = await page.evaluate(() => {
+      const shellElement = document.querySelector('.table-shell');
+      const header = document.querySelector('#rpsTable thead tr');
+      const firstHeaderCell = header.cells[0];
+      const shellRect = shellElement.getBoundingClientRect();
+      const headerRect = header.getBoundingClientRect();
+      const firstHeaderCellRect = firstHeaderCell.getBoundingClientRect();
+      return {
+        verticalScanRatio: (
+          headerRect.top - shellRect.top + headerRect.height / 2
+        ) / shellRect.height,
+        horizontalScanRatio: (
+          firstHeaderCellRect.left - shellRect.left + firstHeaderCellRect.width / 2
+        ) / shellRect.width,
+        devicePixelRatio: window.devicePixelRatio
+      };
+    });
+    const screenshot = await shell.screenshot({ animations: 'disabled', scale: 'device' });
+
+    return page.evaluate(async ({ source, verticalScanRatio, horizontalScanRatio }) => {
+      const image = new Image();
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = reject;
+        image.src = `data:image/png;base64,${source}`;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0);
+      const verticalScanY = Math.max(0, Math.min(
+        canvas.height - 1,
+        Math.round((canvas.height - 1) * verticalScanRatio)
+      ));
+      const horizontalScanX = Math.max(0, Math.min(
+        canvas.width - 1,
+        Math.round((canvas.width - 1) * horizontalScanRatio)
+      ));
+      const collectGridRuns = (pixels, length) => {
+        const runs = [];
+        let runStart = -1;
+        for (let index = 0; index < length; index += 1) {
+          const offset = index * 4;
+          const isGridPixel = (
+            pixels[offset] <= 55
+            && pixels[offset + 1] <= 55
+            && pixels[offset + 2] <= 55
+            && pixels[offset + 3] === 255
+          );
+          if (isGridPixel && runStart < 0) runStart = index;
+          if (!isGridPixel && runStart >= 0) {
+            runs.push({ start: runStart, end: index - 1, width: index - runStart });
+            runStart = -1;
+          }
+        }
+        if (runStart >= 0) {
+          runs.push({ start: runStart, end: length - 1, width: length - runStart });
+        }
+        return runs;
+      };
+      const verticalPixels = context.getImageData(
+        0,
+        verticalScanY,
+        canvas.width,
+        1
+      ).data;
+      const horizontalPixels = context.getImageData(
+        horizontalScanX,
+        0,
+        1,
+        canvas.height
+      ).data;
+
+      return {
+        width: canvas.width,
+        height: canvas.height,
+        verticalRuns: collectGridRuns(verticalPixels, canvas.width),
+        horizontalRuns: collectGridRuns(horizontalPixels, canvas.height)
+      };
+    }, {
+      source: screenshot.toString('base64'),
+      verticalScanRatio: geometry.verticalScanRatio,
+      horizontalScanRatio: geometry.horizontalScanRatio
+    }).then(result => ({ ...result, devicePixelRatio: geometry.devicePixelRatio }));
+  };
+
+  for (let visibleCellCount = 6; visibleCellCount >= 1; visibleCellCount -= 1) {
+    await expect(page.locator('#rpsTable thead th:visible')).toHaveCount(visibleCellCount);
+    const scan = await scanTableBorders();
+    expect(scan.devicePixelRatio).toBe(3);
+    expect(scan.verticalRuns).toHaveLength(visibleCellCount + 1);
+    expect([...new Set(scan.verticalRuns.map(run => run.width))]).toEqual([3]);
+
+    if (visibleCellCount > 1) {
+      const lastColumn = page.locator(
+        '.paintable-name[data-axis="column"]'
+      ).last();
+      await lastColumn.tap();
+      await page.locator('#cellMenu .menu-delete-group').tap();
+    }
+  }
+
+  for (let visibleRowCount = 6; visibleRowCount >= 1; visibleRowCount -= 1) {
+    await expect(page.locator('#rpsTable tr:visible')).toHaveCount(visibleRowCount);
+    const scan = await scanTableBorders();
+    expect(scan.horizontalRuns).toHaveLength(visibleRowCount + 1);
+    expect([...new Set(scan.horizontalRuns.map(run => run.width))]).toEqual([3]);
+
+    if (visibleRowCount > 1) {
+      const lastRow = page.locator('.paintable-name[data-axis="row"]:visible').last();
+      await lastRow.tap();
+      await page.locator('#cellMenu .menu-delete-group').tap();
+    }
+  }
+});
+
 test('keeps live and exported grid strokes stable while deleting rows and columns', async ({
   page
 }, testInfo) => {
-  test.skip(testInfo.project.name !== 'mobile-webkit-table');
+  test.skip(!['mobile', 'mobile-webkit-table'].includes(testInfo.project.name));
   await page.evaluate(() => document.fonts.ready);
 
   await page.evaluate(() => {
     window.__tableStrokeCalls = [];
+    window.__exportCanvasMetrics = [];
+    const paths = new WeakMap();
+    const originalBeginPath = CanvasRenderingContext2D.prototype.beginPath;
+    const originalMoveTo = CanvasRenderingContext2D.prototype.moveTo;
+    const originalLineTo = CanvasRenderingContext2D.prototype.lineTo;
     const originalStroke = CanvasRenderingContext2D.prototype.stroke;
+    const originalToBlob = HTMLCanvasElement.prototype.toBlob;
+
+    CanvasRenderingContext2D.prototype.beginPath = function beginPath(...args) {
+      paths.set(this, []);
+      return originalBeginPath.apply(this, args);
+    };
+    CanvasRenderingContext2D.prototype.moveTo = function moveTo(x, y, ...args) {
+      paths.get(this)?.push({ x, y });
+      return originalMoveTo.apply(this, [x, y, ...args]);
+    };
+    CanvasRenderingContext2D.prototype.lineTo = function lineTo(x, y, ...args) {
+      paths.get(this)?.push({ x, y });
+      return originalLineTo.apply(this, [x, y, ...args]);
+    };
     CanvasRenderingContext2D.prototype.stroke = function stroke(...args) {
       const strokeStyle = String(this.strokeStyle);
       if (/^(?:#333(?:333)?|rgb\(51,\s*51,\s*51\))$/i.test(strokeStyle)) {
+        const transform = this.getTransform();
         window.__tableStrokeCalls.push({
           lineWidth: this.lineWidth,
-          strokeStyle
+          strokeStyle,
+          scaleX: transform.a,
+          scaleY: transform.d,
+          points: [...(paths.get(this) ?? [])]
         });
       }
       return originalStroke.apply(this, args);
     };
+    HTMLCanvasElement.prototype.toBlob = function toBlob(...args) {
+      const context = this.getContext('2d');
+      const lastRow = context.getImageData(0, this.height - 1, this.width, 1).data;
+      const gridStroke = window.__tableStrokeCalls.find(call => call.points.length > 0);
+      const segments = [];
+      for (let index = 0; index < (gridStroke?.points.length ?? 0); index += 2) {
+        segments.push([gridStroke.points[index], gridStroke.points[index + 1]]);
+      }
+      const verticalSegments = segments.filter(([start, end]) => start.x === end.x);
+      const horizontalSegments = segments.filter(([start, end]) => start.y === end.y);
+      const collectGridRuns = (pixels, length) => {
+        const runs = [];
+        let runStart = -1;
+        for (let index = 0; index < length; index += 1) {
+          const offset = index * 4;
+          const isGridPixel = (
+            pixels[offset] <= 55
+            && pixels[offset + 1] <= 55
+            && pixels[offset + 2] <= 55
+            && pixels[offset + 3] === 255
+          );
+          if (isGridPixel && runStart < 0) runStart = index;
+          if (!isGridPixel && runStart >= 0) {
+            runs.push(index - runStart);
+            runStart = -1;
+          }
+        }
+        if (runStart >= 0) runs.push(length - runStart);
+        return runs;
+      };
+      let verticalGridRuns = [];
+      let horizontalGridRuns = [];
+      if (verticalSegments.length > 0 && horizontalSegments.length > 0) {
+        const scale = gridStroke.scaleX;
+        const tableTop = Math.min(...verticalSegments.flatMap(segment => (
+          segment.map(point => point.y)
+        )));
+        const tableLeft = Math.min(...horizontalSegments.flatMap(segment => (
+          segment.map(point => point.x)
+        )));
+        const firstHorizontalY = Math.min(...horizontalSegments.map(([start]) => start.y));
+        const firstVerticalX = Math.min(...verticalSegments.map(([start]) => start.x));
+        const scanY = Math.round((tableTop + firstHorizontalY) / 2 * scale);
+        const scanX = Math.round((tableLeft + firstVerticalX) / 2 * scale);
+        verticalGridRuns = collectGridRuns(
+          context.getImageData(0, scanY, this.width, 1).data,
+          this.width
+        );
+        horizontalGridRuns = collectGridRuns(
+          context.getImageData(scanX, 0, 1, this.height).data,
+          this.height
+        );
+      }
+      let lastRowAlphaMin = 255;
+      let lastRowAlphaMax = 0;
+      for (let offset = 3; offset < lastRow.length; offset += 4) {
+        lastRowAlphaMin = Math.min(lastRowAlphaMin, lastRow[offset]);
+        lastRowAlphaMax = Math.max(lastRowAlphaMax, lastRow[offset]);
+      }
+      window.__exportCanvasMetrics.push({
+        width: this.width,
+        height: this.height,
+        lastRowAlphaMin,
+        lastRowAlphaMax,
+        verticalSegmentCount: verticalSegments.length,
+        horizontalSegmentCount: horizontalSegments.length,
+        verticalGridRuns,
+        horizontalGridRuns
+      });
+      return originalToBlob.apply(this, args);
+    };
   });
 
-  const captureExportStrokes = async () => {
-    await page.evaluate(() => { window.__tableStrokeCalls = []; });
+  const captureExportMetrics = async () => {
+    await page.evaluate(() => {
+      window.__tableStrokeCalls = [];
+      window.__exportCanvasMetrics = [];
+    });
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#saveImageButton').click();
     await downloadPromise;
     await expect(page.locator('#saveImageButton')).toBeEnabled();
-    return page.evaluate(() => window.__tableStrokeCalls.slice(-2));
+    return page.evaluate(() => ({
+      strokes: window.__tableStrokeCalls.slice(-2),
+      canvas: window.__exportCanvasMetrics.at(-1)
+    }));
   };
 
   const readLiveGrid = () => page.evaluate(() => {
@@ -184,6 +415,9 @@ test('keeps live and exported grid strokes stable while deleting rows and column
       tableBottom: tableRect.bottom,
       shellTop: shellRect.top,
       shellBottom: shellRect.bottom,
+      shellLineWidth: getComputedStyle(shell).borderTopWidth,
+      visibleColumnCount: table.rows[0].cells.length,
+      visibleRowCount: renderedRows.length + 1,
       rowHeight: renderedRows[0].getBoundingClientRect().height,
       lineWidths: [...new Set(gridCells.map(cell => getComputedStyle(cell).borderTopWidth))],
       lineColors: [...new Set(gridCells.map(cell => getComputedStyle(cell).borderTopColor))],
@@ -194,7 +428,7 @@ test('keeps live and exported grid strokes stable while deleting rows and column
   });
 
   const beforeGrid = await readLiveGrid();
-  const beforeExportStrokes = await captureExportStrokes();
+  const beforeExport = await captureExportMetrics();
 
   const deletedRowName = page.locator(
     '.paintable-name[data-axis="row"][data-group-index="2"]'
@@ -211,10 +445,13 @@ test('keeps live and exported grid strokes stable while deleting rows and column
   await expect(deletedColumnName).toHaveCount(0);
 
   const afterGrid = await readLiveGrid();
-  const afterExportStrokes = await captureExportStrokes();
+  const afterExport = await captureExportMetrics();
 
   expect(beforeGrid.backgroundClips).toEqual(['padding-box']);
   expect(afterGrid.backgroundClips).toEqual(['padding-box']);
+  expect(beforeGrid.shellLineWidth).toBe('1px');
+  expect(afterGrid.shellLineWidth).toBe('1px');
+  expect(beforeGrid.lineWidths).toEqual(['1px']);
   expect(afterGrid.lineWidths).toEqual(beforeGrid.lineWidths);
   expect(afterGrid.lineColors).toEqual(beforeGrid.lineColors);
   expect(afterGrid.tableTop).toBeCloseTo(beforeGrid.tableTop, 2);
@@ -225,9 +462,39 @@ test('keeps live and exported grid strokes stable while deleting rows and column
     1
   );
 
-  expect(beforeExportStrokes).toHaveLength(2);
-  expect(afterExportStrokes).toHaveLength(2);
-  expect(afterExportStrokes).toEqual(beforeExportStrokes);
-  expect(afterExportStrokes[0].lineWidth).toBe(afterExportStrokes[1].lineWidth);
-  expect(afterExportStrokes[0].strokeStyle).toBe(afterExportStrokes[1].strokeStyle);
+  for (const [capture, liveGrid] of [
+    [beforeExport, beforeGrid],
+    [afterExport, afterGrid]
+  ]) {
+    expect(capture.strokes).toHaveLength(2);
+    capture.strokes.forEach(stroke => {
+      expect(stroke.lineWidth).toBe(1);
+      expect(stroke.scaleX).toBe(4);
+      expect(stroke.scaleY).toBe(4);
+      expect(stroke.lineWidth * stroke.scaleX).toBe(4);
+    });
+    const gridStroke = capture.strokes.find(stroke => stroke.points.length > 0);
+    expect(gridStroke).toBeTruthy();
+    expect(capture.canvas.verticalSegmentCount).toBe(liveGrid.visibleColumnCount - 1);
+    expect(capture.canvas.horizontalSegmentCount).toBe(liveGrid.visibleRowCount - 1);
+    expect(capture.canvas.verticalGridRuns).toHaveLength(liveGrid.visibleColumnCount + 1);
+    expect(capture.canvas.horizontalGridRuns).toHaveLength(liveGrid.visibleRowCount + 1);
+    expect([...new Set(capture.canvas.verticalGridRuns)]).toEqual([4]);
+    expect([...new Set(capture.canvas.horizontalGridRuns)]).toEqual([4]);
+    gridStroke.points.forEach(point => {
+      expect(point.x * gridStroke.scaleX).toBeCloseTo(
+        Math.round(point.x * gridStroke.scaleX),
+        8
+      );
+      expect(point.y * gridStroke.scaleY).toBeCloseTo(
+        Math.round(point.y * gridStroke.scaleY),
+        8
+      );
+    });
+    expect(capture.canvas.lastRowAlphaMin).toBe(255);
+    expect(capture.canvas.lastRowAlphaMax).toBe(255);
+  }
+  expect(beforeExport.canvas.width).toBe(afterExport.canvas.width);
+  expect(beforeExport.canvas.height - afterExport.canvas.height).toBe(159);
+  expect(afterExport.strokes[0].strokeStyle).toBe(afterExport.strokes[1].strokeStyle);
 });

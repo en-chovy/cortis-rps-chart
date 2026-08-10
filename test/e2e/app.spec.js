@@ -672,8 +672,10 @@ test('deletes rows and columns with stable sizing through history and reload', a
   const deletedColumnCells = table.locator('tbody [data-column-index="4"]');
   const initialGeometry = await page.evaluate(() => {
     const frame = document.querySelector('.chart-frame');
+    const headerCell = document.querySelector('#rpsTable thead th');
     return {
-      frameWidth: frame.getBoundingClientRect().width
+      frameWidth: frame.getBoundingClientRect().width,
+      cellWidth: headerCell.getBoundingClientRect().width
     };
   });
 
@@ -698,7 +700,10 @@ test('deletes rows and columns with stable sizing through history and reload', a
   await expect(deletedColumnCells).toHaveCount(0);
   await expect(table).toHaveAttribute('aria-colcount', '5');
   const deletedColumnWidth = await chartFrame.evaluate(element => element.getBoundingClientRect().width);
-  expect(deletedColumnWidth).toBeCloseTo(initialGeometry.frameWidth * 5 / 6, 1);
+  expect(deletedColumnWidth).toBeCloseTo(
+    initialGeometry.frameWidth - initialGeometry.cellWidth,
+    1
+  );
 
   await page.locator('#undoButton').click();
   await expect(columnName).toBeVisible();
