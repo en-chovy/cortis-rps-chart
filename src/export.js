@@ -12,6 +12,15 @@ const EXPORT_TEXT_SELECTOR = [
   '#chartTimestamp:not([hidden])'
 ].join(', ');
 
+function isRenderedElement(element) {
+  return Boolean(
+    element
+    && !element.closest('[hidden]')
+    && element.getClientRects().length > 0
+    && getComputedStyle(element).display !== 'none'
+  );
+}
+
 function getCanvasFont(style) {
   return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
 }
@@ -22,6 +31,7 @@ async function loadExportFonts() {
 
   const textsByFont = new Map();
   document.querySelectorAll(EXPORT_TEXT_SELECTOR).forEach(element => {
+    if (!isRenderedElement(element)) return;
     const text = element.textContent.trim();
     if (!text) return;
 
@@ -155,6 +165,7 @@ function getRelativeRect(element, frameRect) {
 }
 
 function drawElementText(context, element, frameRect) {
+  if (!isRenderedElement(element)) return;
   const text = element.textContent.trim();
   if (!text) return;
 
@@ -220,7 +231,11 @@ function drawExportFrameToCanvas(exportFrame) {
     const shellStyle = getComputedStyle(tableShell);
     const radius = Number.parseFloat(shellStyle.borderTopLeftRadius) || 0;
     const outerBorderWidth = Number.parseFloat(shellStyle.borderTopWidth) || 1;
-    const cells = [...table.querySelectorAll('th, td')];
+    const cells = [...table.querySelectorAll('th, td')].filter(isRenderedElement);
+    const headerCells = [...table.rows[0].cells]
+      .slice(1)
+      .filter(isRenderedElement);
+    const bodyRows = [...table.tBodies[0].rows].filter(isRenderedElement);
 
     context.save();
     roundedRectPath(context, shellRect.x, shellRect.y, shellRect.width, shellRect.height, radius);
@@ -237,12 +252,12 @@ function drawExportFrameToCanvas(exportFrame) {
     context.strokeStyle = shellStyle.borderTopColor;
     context.lineWidth = Number.parseFloat(gridStyle.borderLeftWidth) || outerBorderWidth;
     context.beginPath();
-    [...table.rows[0].cells].slice(1).forEach(cell => {
+    headerCells.forEach(cell => {
       const rect = getRelativeRect(cell, frameRect);
       context.moveTo(rect.x, shellRect.y);
       context.lineTo(rect.x, shellRect.bottom);
     });
-    [...table.rows].slice(1).forEach(row => {
+    bodyRows.forEach(row => {
       const rect = getRelativeRect(row.cells[0], frameRect);
       context.moveTo(shellRect.x, rect.y);
       context.lineTo(shellRect.right, rect.y);

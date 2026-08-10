@@ -1,6 +1,6 @@
-import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260731-6';
-import { createColorPicker } from './src/color-picker.js?v=20260731-6';
-import { initExportControls } from './src/export.js?v=20260731-6';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260810-1';
+import { createColorPicker } from './src/color-picker.js?v=20260810-1';
+import { initExportControls } from './src/export.js?v=20260810-1';
 import {
   captureEditableState,
   clearHistory,
@@ -9,10 +9,11 @@ import {
   initHistoryControls,
   redoEdit,
   undoEdit
-} from './src/history.js?v=20260731-6';
+} from './src/history.js?v=20260810-1';
 import {
   addLegend,
   createInitialEditableState,
+  deleteNameGroup,
   deleteLegend,
   getEditableState,
   getLegend,
@@ -21,19 +22,20 @@ import {
   paintNameGroup,
   renameLegend,
   replaceEditableState,
-  setLegendColor
-} from './src/model.js?v=20260731-6';
+  setLegendColor,
+  toggleGhostCell
+} from './src/model.js?v=20260810-1';
 import {
   LEGEND_NAME_MAX_LENGTH,
   limitLegendName
-} from './src/legend-name.js?v=20260731-6';
+} from './src/legend-name.js?v=20260810-1';
 import {
   clearEditableState,
   loadEditableState,
   saveEditableState
-} from './src/persistence.js?v=20260731-6';
-import { initializeCells, renderApp, renderColors } from './src/render.js?v=20260731-6';
-import { state } from './src/state.js?v=20260731-6';
+} from './src/persistence.js?v=20260810-1';
+import { initializeCells, renderApp, renderColors } from './src/render.js?v=20260810-1';
+import { state } from './src/state.js?v=20260810-1';
 import {
   closeAllPopups,
   closeModal,
@@ -41,7 +43,7 @@ import {
   handleViewportResize,
   positionPopup,
   showModal
-} from './src/ui.js?v=20260731-6';
+} from './src/ui.js?v=20260810-1';
 
 let desktopPicker = null;
 let unifiedPicker = null;
@@ -293,11 +295,58 @@ function confirmReset() {
   closeModal('resetModalOverlay');
 }
 
+function closeCellMenu() {
+  closeAllPopups({ commit: true });
+  state.activeCell = null;
+  state.activeCellIndex = null;
+  state.activeNameGroup = null;
+}
+
+function appendMenuDivider(menu) {
+  const divider = document.createElement('span');
+  divider.className = 'menu-divider';
+  divider.setAttribute('aria-hidden', 'true');
+  menu.appendChild(divider);
+}
+
+function appendVisibilityIcon(button, isGhost) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+
+  const eye = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  eye.setAttribute('d', 'M2.75 12s3.35-5.75 9.25-5.75S21.25 12 21.25 12 17.9 17.75 12 17.75 2.75 12 2.75 12Z');
+  const pupil = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  pupil.setAttribute('cx', '12');
+  pupil.setAttribute('cy', '12');
+  pupil.setAttribute('r', '2.5');
+  svg.append(eye, pupil);
+
+  if (isGhost) {
+    const slashBackdrop = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    slashBackdrop.setAttribute('d', 'M4 4l16 16');
+    slashBackdrop.classList.add('visibility-slash-backdrop');
+    const slash = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    slash.setAttribute('d', 'M4 4l16 16');
+    slash.classList.add('visibility-slash');
+    svg.append(slashBackdrop, slash);
+  }
+  button.appendChild(svg);
+}
+
 function openCellMenu(target) {
   closeAllPopups({ commit: true });
   const menu = document.getElementById('cellMenu');
   if (!menu || (state.activeCellIndex == null && state.activeNameGroup == null)) return;
   menu.replaceChildren();
+  const isNameGroup = state.activeNameGroup !== null;
+  const targetName = target.textContent.trim();
+  const targetType = isNameGroup
+    ? (state.activeNameGroup.axis === 'row' ? '행' : '열')
+    : '셀';
+  menu.setAttribute('role', 'group');
+  menu.setAttribute('aria-label', `${targetName} ${targetType} 설정`);
 
   getEditableState().legends.forEach(legend => {
     const option = document.createElement('div');
@@ -305,7 +354,7 @@ function openCellMenu(target) {
     option.style.backgroundColor = `var(--color-${legend.id}-a)`;
     option.addEventListener('click', () => {
       commitMutation('cell-paint', () => paintActiveTarget(legend.id));
-      closeAllPopups();
+      closeCellMenu();
     });
     menu.appendChild(option);
   });
@@ -315,9 +364,43 @@ function openCellMenu(target) {
   reset.textContent = '✕';
   reset.addEventListener('click', () => {
     commitMutation('cell-clear', () => paintActiveTarget(null));
-    closeAllPopups();
+    closeCellMenu();
   });
   menu.appendChild(reset);
+
+  appendMenuDivider(menu);
+
+  if (state.activeCellIndex != null) {
+    const cellIndex = state.activeCellIndex;
+    const isGhost = getEditableState().ghostCells[cellIndex] === true;
+    const ghostToggle = document.createElement('button');
+    const ghostAction = isGhost ? '글자 보이기' : '글자 숨기기';
+    ghostToggle.type = 'button';
+    ghostToggle.className = 'menu-icon-action menu-ghost-toggle';
+    ghostToggle.classList.toggle('is-active', isGhost);
+    ghostToggle.setAttribute('aria-label', `${targetName} 고스트 셀`);
+    ghostToggle.setAttribute('aria-pressed', String(isGhost));
+    ghostToggle.title = ghostAction;
+    appendVisibilityIcon(ghostToggle, isGhost);
+    ghostToggle.addEventListener('click', () => {
+      commitMutation('cell-ghost', () => toggleGhostCell(cellIndex));
+      closeCellMenu();
+    });
+    menu.appendChild(ghostToggle);
+  } else {
+    const { axis, index } = state.activeNameGroup;
+    const axisLabel = axis === 'row' ? '행' : '열';
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'menu-delete-group';
+    deleteButton.textContent = '삭제';
+    deleteButton.setAttribute('aria-label', `${targetName} ${axisLabel} 삭제`);
+    deleteButton.addEventListener('click', () => {
+      commitMutation(`${axis}-delete`, () => deleteNameGroup(axis, index));
+      closeCellMenu();
+    });
+    menu.appendChild(deleteButton);
+  }
 
   positionPopup(menu, target, false);
 }

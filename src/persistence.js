@@ -1,5 +1,8 @@
 const STORAGE_KEY = 'cortis-rps-chart:editable-state';
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
+const LEGACY_STORAGE_VERSION = 1;
+const NAME_GROUP_COUNT = 5;
+const PAINTABLE_CELL_COUNT = NAME_GROUP_COUNT * (NAME_GROUP_COUNT - 1);
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -13,14 +16,14 @@ function isValidColor(color) {
     && color.alpha <= 1;
 }
 
-function isValidEditableState(value) {
+function hasValidCoreEditableState(value) {
   if (!isPlainObject(value)
     || !Number.isInteger(value.nextLegendId)
     || value.nextLegendId < 1
     || !Array.isArray(value.legends)
     || !isPlainObject(value.colors)
     || !Array.isArray(value.cells)
-    || value.cells.length !== 20) {
+    || value.cells.length !== PAINTABLE_CELL_COUNT) {
     return false;
   }
 
@@ -52,6 +55,33 @@ function isValidEditableState(value) {
   ));
 }
 
+function isValidDeletedGroups(groups) {
+  return Array.isArray(groups)
+    && new Set(groups).size === groups.length
+    && groups.every(index => (
+      Number.isInteger(index) && index >= 0 && index < NAME_GROUP_COUNT
+    ));
+}
+
+function isValidEditableState(value) {
+  return hasValidCoreEditableState(value)
+    && Array.isArray(value.ghostCells)
+    && value.ghostCells.length === PAINTABLE_CELL_COUNT
+    && value.ghostCells.every(ghost => typeof ghost === 'boolean')
+    && isValidDeletedGroups(value.deletedRows)
+    && isValidDeletedGroups(value.deletedColumns);
+}
+
+function migrateLegacyEditableState(value) {
+  if (!hasValidCoreEditableState(value)) return null;
+  return {
+    ...value,
+    ghostCells: Array(PAINTABLE_CELL_COUNT).fill(false),
+    deletedRows: [],
+    deletedColumns: []
+  };
+}
+
 function getSessionStorage(storage) {
   if (storage !== undefined) return storage;
   try {
@@ -70,14 +100,22 @@ export function loadEditableState(storage) {
     if (raw === null) return null;
 
     const payload = JSON.parse(raw);
-    if (!isPlainObject(payload)
-      || payload.version !== STORAGE_VERSION
-      || !isValidEditableState(payload.editableState)) {
+    if (!isPlainObject(payload)) {
       target.removeItem(STORAGE_KEY);
       return null;
     }
 
-    return payload.editableState;
+    if (payload.version === STORAGE_VERSION && isValidEditableState(payload.editableState)) {
+      return payload.editableState;
+    }
+
+    if (payload.version === LEGACY_STORAGE_VERSION) {
+      const migrated = migrateLegacyEditableState(payload.editableState);
+      if (migrated) return migrated;
+    }
+
+    target.removeItem(STORAGE_KEY);
+    return null;
   } catch {
     try {
       target.removeItem(STORAGE_KEY);

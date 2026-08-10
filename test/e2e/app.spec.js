@@ -572,6 +572,166 @@ test('paints a full column from its name cell', async ({ page }) => {
   }
 });
 
+test('shows a contextual ghost action for cells and an axis delete action for names', async ({ page }) => {
+  const menu = page.locator('#cellMenu');
+  const ghostCell = page.locator('.paintable[data-cell-index="18"]');
+
+  await ghostCell.click();
+  await expect(menu).toBeVisible();
+  await expect(menu).toHaveAttribute('role', 'group');
+  await expect(menu).toHaveAttribute('aria-label', '쮸건 셀 설정');
+  await expect(menu.locator('.menu-ghost-toggle')).toHaveCount(1);
+  await expect(menu.locator('.menu-delete-group')).toHaveCount(0);
+  await expect(menu.locator('.menu-divider')).toHaveCount(1);
+
+  const ghostToggle = menu.locator('.menu-ghost-toggle');
+  await expect(ghostToggle).toHaveAttribute('type', 'button');
+  await expect(ghostToggle).toHaveAttribute('aria-label', '쮸건 고스트 셀');
+  await expect(ghostToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(ghostToggle).toHaveAttribute('title', '글자 숨기기');
+  await expect(ghostToggle.locator('svg')).toHaveAttribute('aria-hidden', 'true');
+  await expect(ghostToggle.locator('.visibility-slash')).toHaveCount(0);
+
+  await page.keyboard.press('Escape');
+  const rowName = page.locator('.paintable-name[data-axis="row"][data-group-index="2"]');
+  await rowName.click();
+  await expect(menu).toHaveAttribute('aria-label', '주훈 행 설정');
+  await expect(menu.locator('.menu-ghost-toggle')).toHaveCount(0);
+  await expect(menu.locator('.menu-delete-group')).toHaveCount(1);
+  await expect(menu.locator('.menu-delete-group')).toHaveText('삭제');
+  await expect(menu.locator('.menu-delete-group')).toHaveAttribute('aria-label', '주훈 행 삭제');
+
+  await page.keyboard.press('Escape');
+  const columnName = page.locator('.paintable-name[data-axis="column"][data-group-index="4"]');
+  await columnName.click();
+  await expect(menu).toHaveAttribute('aria-label', '건호 열 설정');
+  await expect(menu.locator('.menu-ghost-toggle')).toHaveCount(0);
+  await expect(menu.locator('.menu-delete-group')).toHaveText('삭제');
+  await expect(menu.locator('.menu-delete-group')).toHaveAttribute('aria-label', '건호 열 삭제');
+});
+
+test('keeps a ghost cell independent from paint through history, reload, and reset', async ({ page }) => {
+  const cell = page.locator('.paintable[data-cell-index="18"]');
+  const menu = page.locator('#cellMenu');
+
+  await expect(cell).toHaveText('쮸건');
+  await cell.click();
+  await menu.locator('.menu-option').first().click();
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await cell.click();
+  await menu.locator('.menu-ghost-toggle').click();
+  await expect(cell).toHaveText('쮸건');
+  await expect(cell).toHaveClass(/is-ghost/);
+  await expect(cell).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.locator('#undoButton').click();
+  await expect(cell).not.toHaveClass(/is-ghost/);
+  await expect(cell).not.toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.locator('#redoButton').click();
+  await expect(cell).toHaveClass(/is-ghost/);
+  await expect(cell).toHaveCSS('color', 'rgb(255, 255, 255)');
+
+  await page.reload();
+  await expect(cell).toHaveText('쮸건');
+  await expect(cell).toHaveClass(/is-ghost/);
+  await expect(cell).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  await expect(page.locator('#undoButton')).toBeDisabled();
+  await expect(page.locator('#redoButton')).toBeDisabled();
+
+  await cell.click();
+  const activeGhostToggle = menu.locator('.menu-ghost-toggle');
+  await expect(activeGhostToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(activeGhostToggle).toHaveAttribute('title', '글자 보이기');
+  await expect(activeGhostToggle.locator('.visibility-slash')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+
+  await page.locator('#resetButton').click();
+  await page.locator('#confirmResetBtn').click();
+  await expect(cell).not.toHaveClass(/is-ghost/);
+  await expect(cell).not.toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(cell).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('#undoButton')).toBeDisabled();
+  await expect(page.locator('#redoButton')).toBeDisabled();
+
+  await page.reload();
+  await expect(cell).not.toHaveClass(/is-ghost/);
+  await expect(cell).not.toHaveCSS('color', 'rgb(255, 255, 255)');
+});
+
+test('deletes rows and columns with stable sizing through history and reload', async ({ page }) => {
+  const chartFrame = page.locator('.chart-frame');
+  const table = page.locator('#rpsTable');
+  const row = table.locator('tbody tr').nth(2);
+  const rowName = page.locator('.paintable-name[data-axis="row"][data-group-index="2"]');
+  const columnName = page.locator('.paintable-name[data-axis="column"][data-group-index="4"]');
+  const deletedColumnCells = table.locator('tbody tr > td:nth-child(6)');
+  const initialGeometry = await page.evaluate(() => {
+    const frame = document.querySelector('.chart-frame');
+    const header = document.querySelector(
+      '.paintable-name[data-axis="column"][data-group-index="4"]'
+    );
+    return {
+      cellWidth: header.getBoundingClientRect().width,
+      frameWidth: frame.getBoundingClientRect().width
+    };
+  });
+
+  await rowName.click();
+  await page.locator('#cellMenu .menu-delete-group').click();
+  await expect(row).toBeHidden();
+  await expect(rowName).toBeHidden();
+  await expect(columnName).toBeVisible();
+  await expect(table).toHaveAttribute('aria-rowcount', '5');
+  expect(await chartFrame.evaluate(element => element.getBoundingClientRect().width))
+    .toBeCloseTo(initialGeometry.frameWidth, 1);
+
+  await page.locator('#undoButton').click();
+  await expect(row).toBeVisible();
+  await expect(table).toHaveAttribute('aria-rowcount', '6');
+  await page.locator('#redoButton').click();
+  await expect(row).toBeHidden();
+
+  await columnName.click();
+  await page.locator('#cellMenu .menu-delete-group').click();
+  await expect(columnName).toBeHidden();
+  await expect(deletedColumnCells).toHaveCount(5);
+  for (let index = 0; index < 5; index += 1) {
+    await expect(deletedColumnCells.nth(index)).toBeHidden();
+  }
+  await expect(table).toHaveAttribute('aria-colcount', '5');
+  const deletedColumnWidth = await chartFrame.evaluate(element => element.getBoundingClientRect().width);
+  expect(deletedColumnWidth).toBeCloseTo(
+    initialGeometry.frameWidth - initialGeometry.cellWidth,
+    1
+  );
+
+  await page.locator('#undoButton').click();
+  await expect(columnName).toBeVisible();
+  await expect(row).toBeHidden();
+  await expect(table).toHaveAttribute('aria-colcount', '6');
+  expect(await chartFrame.evaluate(element => element.getBoundingClientRect().width))
+    .toBeCloseTo(initialGeometry.frameWidth, 1);
+
+  await page.locator('#redoButton').click();
+  await expect(columnName).toBeHidden();
+  await expect(row).toBeHidden();
+
+  await page.reload();
+  await expect(row).toBeHidden();
+  await expect(columnName).toBeHidden();
+  await expect(table).toHaveAttribute('aria-rowcount', '5');
+  await expect(table).toHaveAttribute('aria-colcount', '5');
+  expect(await chartFrame.evaluate(element => element.getBoundingClientRect().width))
+    .toBeCloseTo(deletedColumnWidth, 1);
+  await expect(page.locator('#undoButton')).toBeDisabled();
+  await expect(page.locator('#redoButton')).toBeDisabled();
+});
+
 test('closes legend editors with Escape', async ({ page }, testInfo) => {
   await page.locator('.btn-add-legend').click();
   const overlay = page.locator('#nameModalOverlay');
@@ -691,6 +851,50 @@ test('shows the pending color and larger slider targets on mobile', async ({ pag
   await expect.poll(() => page.evaluate(() => (
     getComputedStyle(document.documentElement).getPropertyValue('--color-1').trim()
   ))).toBe(original);
+});
+
+test('omits deleted row labels and draws ghost text white in the exported canvas', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop');
+
+  const ghostCell = page.locator('.paintable[data-cell-index="18"]');
+  await ghostCell.click();
+  await page.locator('#cellMenu .menu-ghost-toggle').click();
+  await expect(ghostCell).toHaveCSS('color', 'rgb(255, 255, 255)');
+
+  const deletedRowName = page.locator(
+    '.paintable-name[data-axis="row"][data-group-index="2"]'
+  );
+  await deletedRowName.click();
+  await page.locator('#cellMenu .menu-delete-group').click();
+  await expect(deletedRowName).toBeHidden();
+
+  await page.evaluate(() => {
+    window.__exportFillTextCalls = [];
+    const originalFillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function fillText(text, x, y, maxWidth) {
+      window.__exportFillTextCalls.push({
+        fillStyle: String(this.fillStyle),
+        text: String(text)
+      });
+      if (arguments.length >= 4) return originalFillText.call(this, text, x, y, maxWidth);
+      return originalFillText.call(this, text, x, y);
+    };
+  });
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#saveImageButton').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^cortis-rps-chart-\d{4}-\d{2}-\d{2}\.png$/);
+
+  const fillTextCalls = await page.evaluate(() => window.__exportFillTextCalls);
+  const drawnTexts = fillTextCalls.map(call => call.text);
+  for (const deletedLabel of ['틴훈', '젯쮸', '셩쮼', '낭쮼']) {
+    expect(drawnTexts).not.toContain(deletedLabel);
+  }
+
+  const ghostTextCalls = fillTextCalls.filter(call => call.text === '쮸건');
+  expect(ghostTextCalls).toHaveLength(1);
+  expect(ghostTextCalls[0].fillStyle).toMatch(/^(?:#fff(?:fff)?|white|rgba?\(255,\s*255,\s*255(?:,\s*1)?\))$/i);
 });
 
 test('downloads a non-empty PNG containing the painted chart color', async ({ page }) => {

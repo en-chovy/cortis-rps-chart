@@ -1,5 +1,5 @@
-import { recordHistory, restoreEditableState } from './history.js?v=20260731-6';
-import { state } from './state.js?v=20260731-6';
+import { recordHistory, restoreEditableState } from './history.js?v=20260810-1';
+import { state } from './state.js?v=20260810-1';
 
 const LAYER_HIDE_FALLBACK_MS = 150;
 const layerHideTimers = new WeakMap();
@@ -116,6 +116,7 @@ function closeAllEditingUI() {
 
   state.activeCell = null;
   state.activeCellIndex = null;
+  state.activeNameGroup = null;
   state.editingId = null;
   state.unifiedEditingId = null;
   state.isImeComposing = false;

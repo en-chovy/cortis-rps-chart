@@ -77,7 +77,7 @@ test('ships the model defaults as visible initial legend markup and colors', asy
   );
 });
 
-test('starts the app early and guards only persisted legend restoration', async () => {
+test('starts the app early and guards persisted chart restoration', async () => {
   const [html, styles, app] = await Promise.all([
     readFile(path.join(ROOT_PATH, 'index.html'), 'utf8'),
     readFile(path.join(ROOT_PATH, 'styles.css'), 'utf8'),
@@ -94,5 +94,6 @@ test('starts the app early and guards only persisted legend restoration', async 
   assert.ok(appScriptIndex > 0 && appScriptIndex < headEnd);
   assert.doesNotMatch(html.slice(bodyStart), /src="\.\/app\.js\?/);
   assert.match(styles, /\.is-restoring-chart-state \.legend-wrapper\s*\{\s*visibility:\s*hidden;\s*\}/);
+  assert.match(styles, /\.is-restoring-chart-state \.chart-frame\s*\{\s*visibility:\s*hidden;\s*\}/);
   assert.match(app, /finally\s*\{\s*document\.documentElement\.classList\.remove\('is-restoring-chart-state'\);/);
 });

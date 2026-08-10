@@ -1,4 +1,7 @@
-import { normalizeLegendName } from './legend-name.js?v=20260731-6';
+import { normalizeLegendName } from './legend-name.js?v=20260810-1';
+
+export const NAME_GROUP_COUNT = 5;
+export const PAINTABLE_CELL_COUNT = NAME_GROUP_COUNT * (NAME_GROUP_COUNT - 1);
 
 const INITIAL_LEGENDS = [
   { id: 1, name: 'OTP', color: { hex: '#ffadad', alpha: 0.5 } },
@@ -14,7 +17,10 @@ export function createInitialEditableState() {
     nextLegendId,
     legends: INITIAL_LEGENDS.map(({ id, name }) => ({ id, name })),
     colors: Object.fromEntries(INITIAL_LEGENDS.map(({ id, color }) => [id, { ...color }])),
-    cells: Array(20).fill(null)
+    cells: Array(PAINTABLE_CELL_COUNT).fill(null),
+    ghostCells: Array(PAINTABLE_CELL_COUNT).fill(false),
+    deletedRows: [],
+    deletedColumns: []
   };
 }
 
@@ -34,8 +40,22 @@ export function replaceEditableState(snapshot) {
     ...legend,
     name: normalizeLegendName(legend.name)
   }));
+  nextState.ghostCells = Array.isArray(nextState.ghostCells)
+    && nextState.ghostCells.length === PAINTABLE_CELL_COUNT
+    && nextState.ghostCells.every(value => typeof value === 'boolean')
+    ? nextState.ghostCells
+    : Array(PAINTABLE_CELL_COUNT).fill(false);
+  nextState.deletedRows = normalizeDeletedGroups(nextState.deletedRows);
+  nextState.deletedColumns = normalizeDeletedGroups(nextState.deletedColumns);
   editableState = nextState;
   return editableState;
+}
+
+function normalizeDeletedGroups(groups) {
+  if (!Array.isArray(groups)) return [];
+  return [...new Set(groups)]
+    .filter(index => Number.isInteger(index) && index >= 0 && index < NAME_GROUP_COUNT)
+    .sort((a, b) => a - b);
 }
 
 export function getLegend(id) {
@@ -80,17 +100,46 @@ export function paintCell(index, legendId) {
   editableState.cells[index] = legendId == null ? null : Number(legendId);
 }
 
+export function toggleGhostCell(index) {
+  const numericIndex = Number(index);
+  if (!Number.isInteger(numericIndex)
+    || numericIndex < 0
+    || numericIndex >= editableState.ghostCells.length) return;
+  editableState.ghostCells[numericIndex] = !editableState.ghostCells[numericIndex];
+}
+
+export function deleteNameGroup(axis, groupIndex) {
+  const numericGroupIndex = Number(groupIndex);
+  if (!['row', 'column'].includes(axis)
+    || !Number.isInteger(numericGroupIndex)
+    || numericGroupIndex < 0
+    || numericGroupIndex >= NAME_GROUP_COUNT) return;
+
+  const groups = axis === 'row' ? editableState.deletedRows : editableState.deletedColumns;
+  if (groups.includes(numericGroupIndex)) return;
+  groups.push(numericGroupIndex);
+  groups.sort((a, b) => a - b);
+}
+
 export function paintNameGroup(axis, groupIndex, legendId) {
   const numericGroupIndex = Number(groupIndex);
-  if (!['row', 'column'].includes(axis) || numericGroupIndex < 0 || numericGroupIndex >= 5) return;
+  if (!['row', 'column'].includes(axis)
+    || !Number.isInteger(numericGroupIndex)
+    || numericGroupIndex < 0
+    || numericGroupIndex >= NAME_GROUP_COUNT) return;
+  if ((axis === 'row' && editableState.deletedRows.includes(numericGroupIndex))
+    || (axis === 'column' && editableState.deletedColumns.includes(numericGroupIndex))) return;
 
   const numericLegendId = legendId == null ? null : Number(legendId);
   let cellIndex = 0;
-  for (let row = 0; row < 5; row += 1) {
-    for (let column = 0; column < 5; column += 1) {
+  for (let row = 0; row < NAME_GROUP_COUNT; row += 1) {
+    for (let column = 0; column < NAME_GROUP_COUNT; column += 1) {
       if (row === column) continue;
-      if ((axis === 'row' && row === numericGroupIndex)
-        || (axis === 'column' && column === numericGroupIndex)) {
+      const isTargetCell = (axis === 'row' && row === numericGroupIndex)
+        || (axis === 'column' && column === numericGroupIndex);
+      const isDeletedIntersection = editableState.deletedRows.includes(row)
+        || editableState.deletedColumns.includes(column);
+      if (isTargetCell && !isDeletedIntersection) {
         editableState.cells[cellIndex] = numericLegendId;
       }
       cellIndex += 1;
