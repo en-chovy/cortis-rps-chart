@@ -669,7 +669,7 @@ test('deletes rows and columns with stable sizing through history and reload', a
   const row = table.locator('tbody tr').nth(2);
   const rowName = page.locator('.paintable-name[data-axis="row"][data-group-index="2"]');
   const columnName = page.locator('.paintable-name[data-axis="column"][data-group-index="4"]');
-  const deletedColumnCells = table.locator('tbody tr > td:nth-child(6)');
+  const deletedColumnCells = table.locator('tbody [data-column-index="4"]');
   const initialGeometry = await page.evaluate(() => {
     const frame = document.querySelector('.chart-frame');
     const header = document.querySelector(
@@ -699,10 +699,7 @@ test('deletes rows and columns with stable sizing through history and reload', a
   await columnName.click();
   await page.locator('#cellMenu .menu-delete-group').click();
   await expect(columnName).toBeHidden();
-  await expect(deletedColumnCells).toHaveCount(5);
-  for (let index = 0; index < 5; index += 1) {
-    await expect(deletedColumnCells.nth(index)).toBeHidden();
-  }
+  await expect(deletedColumnCells).toHaveCount(0);
   await expect(table).toHaveAttribute('aria-colcount', '5');
   const deletedColumnWidth = await chartFrame.evaluate(element => element.getBoundingClientRect().width);
   expect(deletedColumnWidth).toBeCloseTo(
@@ -712,6 +709,7 @@ test('deletes rows and columns with stable sizing through history and reload', a
 
   await page.locator('#undoButton').click();
   await expect(columnName).toBeVisible();
+  await expect(deletedColumnCells).toHaveCount(5);
   await expect(row).toBeHidden();
   await expect(table).toHaveAttribute('aria-colcount', '6');
   expect(await chartFrame.evaluate(element => element.getBoundingClientRect().width))

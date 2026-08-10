@@ -1,11 +1,46 @@
-import { hexToRgb } from './color.js?v=20260810-1';
-import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260810-1';
-import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260810-1';
+import { hexToRgb } from './color.js?v=20260810-2';
+import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260810-2';
+import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260810-2';
 
 const LEGEND_EXIT_FALLBACK_MS = 150;
 const legendEntryFrames = new WeakMap();
 const legendRemovalTimers = new WeakMap();
 let hasRenderedLegends = false;
+let tableStructure = null;
+
+function captureTableStructure(table) {
+  const headerRow = table.tHead?.rows[0];
+  const bodyRows = Array.from(table.tBodies[0]?.rows ?? []);
+  if (!headerRow || bodyRows.length !== NAME_GROUP_COUNT) return null;
+
+  const headerCells = Array.from(headerRow.cells);
+  if (headerCells.length !== NAME_GROUP_COUNT + 1) return null;
+
+  const rows = bodyRows.map((row, rowIndex) => {
+    const cells = Array.from(row.cells);
+    if (cells.length !== NAME_GROUP_COUNT + 1) return null;
+
+    row.dataset.rowIndex = String(rowIndex);
+    cells.slice(1).forEach((cell, columnIndex) => {
+      cell.dataset.columnIndex = String(columnIndex);
+    });
+    return {
+      row,
+      nameCell: cells[0],
+      cells: cells.slice(1)
+    };
+  });
+  if (rows.some(row => row == null)) return null;
+
+  return {
+    table,
+    headerRow,
+    cornerCell: headerCells[0],
+    columnHeaders: headerCells.slice(1),
+    rows,
+    renderedColumnKey: null
+  };
+}
 
 function colorToRgba({ hex, alpha }) {
   const [r, g, b] = hexToRgb(hex);
@@ -35,25 +70,42 @@ export function renderTableStructure() {
   const chartFrame = document.querySelector('.chart-frame');
   if (!table || !chartFrame) return;
 
+  if (!tableStructure || tableStructure.table !== table) {
+    tableStructure = captureTableStructure(table);
+  }
+  if (!tableStructure) return;
+
   const deletedRowIndexes = new Set(deletedRows);
   const deletedColumnIndexes = new Set(deletedColumns);
-  const columnHeaders = table.querySelectorAll(
-    '.paintable-name[data-axis="column"][data-group-index]'
-  );
-  columnHeaders.forEach(header => {
-    header.hidden = deletedColumnIndexes.has(Number(header.dataset.groupIndex));
-  });
+  const visibleColumnIndexes = Array.from(
+    { length: NAME_GROUP_COUNT },
+    (_, index) => index
+  ).filter(index => !deletedColumnIndexes.has(index));
 
-  Array.from(table.tBodies[0]?.rows ?? []).forEach((row, rowIndex) => {
-    row.hidden = deletedRowIndexes.has(rowIndex);
-    Array.from(row.cells).slice(1).forEach((cell, columnIndex) => {
-      cell.hidden = deletedColumnIndexes.has(columnIndex);
+  const columnKey = visibleColumnIndexes.join(',');
+  if (tableStructure.renderedColumnKey !== columnKey) {
+    tableStructure.headerRow.replaceChildren(
+      tableStructure.cornerCell,
+      ...visibleColumnIndexes.map(index => tableStructure.columnHeaders[index])
+    );
+    tableStructure.rows.forEach(({ row, nameCell, cells }) => {
+      row.replaceChildren(
+        nameCell,
+        ...visibleColumnIndexes.map(index => cells[index])
+      );
     });
+    tableStructure.renderedColumnKey = columnKey;
+  }
+  tableStructure.rows.forEach(({ row }, rowIndex) => {
+    row.hidden = deletedRowIndexes.has(rowIndex);
   });
 
-  const visibleColumnCount = NAME_GROUP_COUNT - deletedColumnIndexes.size;
+  const visibleColumnCount = visibleColumnIndexes.length;
   const visibleRowCount = NAME_GROUP_COUNT - deletedRowIndexes.size;
-  chartFrame.style.width = `calc(var(--cell-width) * ${visibleColumnCount + 1})`;
+  chartFrame.style.setProperty(
+    '--visible-table-column-count',
+    String(visibleColumnCount + 1)
+  );
   table.setAttribute('aria-colcount', String(visibleColumnCount + 1));
   table.setAttribute('aria-rowcount', String(visibleRowCount + 1));
 }
@@ -146,6 +198,8 @@ export function initializeCells() {
   document.querySelectorAll('.paintable').forEach((cell, index) => {
     cell.dataset.cellIndex = String(index);
   });
+  const table = document.getElementById('rpsTable');
+  tableStructure = table ? captureTableStructure(table) : null;
 }
 
 export function renderApp() {

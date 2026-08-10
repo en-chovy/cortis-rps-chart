@@ -143,7 +143,12 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 .btn-add-legend:active { transform: scale(0.9); }
 
 /* --- TABLE SECTION --- */
-.chart-frame { position: relative; width: calc(var(--cell-width) * 6); margin: 0 auto; }
+.chart-frame {
+    --visible-table-column-count: 6;
+    position: relative;
+    width: calc(var(--cell-width) * var(--visible-table-column-count));
+    margin: 0 auto;
+}
 .table-shell{ width: 100%; margin: 0 auto; box-sizing: border-box; border: var(--grid-line) solid #333; border-radius: 12px; overflow: hidden; background: #fff; }
 #rpsTable{ width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; border: 0; border-radius: 0; overflow: visible; }
 #rpsTable th, #rpsTable td { border-left: var(--grid-line) solid #333; border-top: var(--grid-line) solid #333; width: var(--cell-width); height: var(--cell-height); text-align: center; font-size: clamp(10px, 2vw, 16px); font-weight: 400; box-sizing: border-box; }
@@ -264,7 +269,9 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 .image-export-frame .legend-item { gap: 6px; }
 .image-export-frame .circle-display { width: 16px; height: 16px; }
 .image-export-frame .editable-label { font-size: 12px; }
-.image-export-frame .chart-frame { width: calc(var(--cell-width) * 6); }
+.image-export-frame .chart-frame {
+    width: calc(var(--cell-width) * var(--visible-table-column-count));
+}
 .image-export-frame #rpsTable th,
 .image-export-frame #rpsTable td { font-size: 10px; }
 .image-export-frame .chart-timestamp { top: calc(100% + 8px); font-size: 10px; }
