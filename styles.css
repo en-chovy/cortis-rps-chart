@@ -150,8 +150,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     margin: 0 auto;
 }
 .table-shell{ width: 100%; margin: 0 auto; box-sizing: border-box; border: var(--grid-line) solid #333; border-radius: 12px; overflow: hidden; background: #fff; }
-#rpsTable{ width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; border: 0; border-radius: 0; overflow: visible; }
-#rpsTable th, #rpsTable td { border-left: var(--grid-line) solid #333; border-top: var(--grid-line) solid #333; width: var(--cell-width); height: var(--cell-height); text-align: center; font-size: clamp(10px, 2vw, 16px); font-weight: 400; box-sizing: border-box; }
+#rpsTable{ width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; border: 0; border-radius: 0; overflow: visible; background-color: #fff; }
+#rpsTable th, #rpsTable td { border-left: var(--grid-line) solid #333; border-top: var(--grid-line) solid #333; height: var(--cell-height); text-align: center; font-size: clamp(10px, 2vw, 16px); font-weight: 400; box-sizing: border-box; background-clip: padding-box; }
 #rpsTable tr > *:first-child{ border-left: 0; background-color: #636366; color: white; font-weight: 500; }
 #rpsTable thead tr:first-child > *{ border-top: 0; background-color: #636366; color: white; font-weight: 500; }
 .paintable, .paintable-name {
