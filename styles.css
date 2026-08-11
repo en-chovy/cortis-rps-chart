@@ -149,6 +149,7 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     --visible-table-column-count: 6;
     position: relative;
     width: calc(var(--cell-width) * var(--visible-table-column-count));
+    min-height: calc(var(--cell-height) * 6);
     margin: 0 auto;
 }
 .table-shell{ width: 100%; margin: 0 auto; box-sizing: border-box; border: 0; border-radius: 12px; overflow: hidden; background: #fff; }
@@ -295,6 +296,7 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 .image-export-frame .editable-label { font-size: 12px; }
 .image-export-frame .chart-frame {
     width: calc(var(--cell-width) * var(--visible-table-column-count));
+    min-height: 0;
 }
 .image-export-frame .table-grid-overlay { display: none; }
 .image-export-frame #rpsTable th,

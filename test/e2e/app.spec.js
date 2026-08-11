@@ -710,9 +710,14 @@ test('deletes rows and columns with stable sizing through history and reload', a
   const initialGeometry = await page.evaluate(() => {
     const frame = document.querySelector('.chart-frame');
     const headerCell = document.querySelector('#rpsTable thead th');
+    const exportPanel = document.querySelector('.export-panel');
+    const historyControls = document.querySelector('.history-controls');
     return {
       frameWidth: frame.getBoundingClientRect().width,
-      cellWidth: headerCell.getBoundingClientRect().width
+      frameHeight: frame.getBoundingClientRect().height,
+      cellWidth: headerCell.getBoundingClientRect().width,
+      exportPanelTop: exportPanel.getBoundingClientRect().top,
+      historyControlsTop: historyControls.getBoundingClientRect().top
     };
   });
 
@@ -724,6 +729,14 @@ test('deletes rows and columns with stable sizing through history and reload', a
   await expect(table).toHaveAttribute('aria-rowcount', '5');
   expect(await chartFrame.evaluate(element => element.getBoundingClientRect().width))
     .toBeCloseTo(initialGeometry.frameWidth, 1);
+  const deletedRowGeometry = await page.evaluate(() => ({
+    frameHeight: document.querySelector('.chart-frame').getBoundingClientRect().height,
+    exportPanelTop: document.querySelector('.export-panel').getBoundingClientRect().top,
+    historyControlsTop: document.querySelector('.history-controls').getBoundingClientRect().top
+  }));
+  expect(deletedRowGeometry.frameHeight).toBeCloseTo(initialGeometry.frameHeight, 1);
+  expect(deletedRowGeometry.exportPanelTop).toBeCloseTo(initialGeometry.exportPanelTop, 1);
+  expect(deletedRowGeometry.historyControlsTop).toBeCloseTo(initialGeometry.historyControlsTop, 1);
 
   await page.locator('#undoButton').click();
   await expect(row).toBeVisible();
@@ -761,6 +774,14 @@ test('deletes rows and columns with stable sizing through history and reload', a
   await expect(table).toHaveAttribute('aria-colcount', '5');
   expect(await chartFrame.evaluate(element => element.getBoundingClientRect().width))
     .toBeCloseTo(deletedColumnWidth, 1);
+  const reloadedGeometry = await page.evaluate(() => ({
+    frameHeight: document.querySelector('.chart-frame').getBoundingClientRect().height,
+    exportPanelTop: document.querySelector('.export-panel').getBoundingClientRect().top,
+    historyControlsTop: document.querySelector('.history-controls').getBoundingClientRect().top
+  }));
+  expect(reloadedGeometry.frameHeight).toBeCloseTo(initialGeometry.frameHeight, 1);
+  expect(reloadedGeometry.exportPanelTop).toBeCloseTo(initialGeometry.exportPanelTop, 1);
+  expect(reloadedGeometry.historyControlsTop).toBeCloseTo(initialGeometry.historyControlsTop, 1);
   await expect(page.locator('#undoButton')).toBeEnabled();
   await expect(page.locator('#redoButton')).toBeDisabled();
 });

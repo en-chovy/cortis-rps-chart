@@ -1,6 +1,6 @@
-import { hexToRgb } from './color.js?v=20260811-2';
-import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260811-2';
-import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260811-2';
+import { hexToRgb } from './color.js?v=20260811-3';
+import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260811-3';
+import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260811-3';
 
 const LEGEND_EXIT_FALLBACK_MS = 150;
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
