@@ -1,6 +1,6 @@
-import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260811-1';
-import { createColorPicker } from './src/color-picker.js?v=20260811-1';
-import { initExportControls } from './src/export.js?v=20260811-1';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260811-2';
+import { createColorPicker } from './src/color-picker.js?v=20260811-2';
+import { initExportControls } from './src/export.js?v=20260811-2';
 import {
   captureEditableState,
   clearHistory,
@@ -9,7 +9,7 @@ import {
   initHistoryControls,
   redoEdit,
   undoEdit
-} from './src/history.js?v=20260811-1';
+} from './src/history.js?v=20260811-2';
 import {
   addLegend,
   createInitialEditableState,
@@ -26,23 +26,23 @@ import {
   restoreNameGroup,
   setLegendColor,
   toggleGhostCell
-} from './src/model.js?v=20260811-1';
+} from './src/model.js?v=20260811-2';
 import {
   LEGEND_NAME_MAX_LENGTH,
   limitLegendName
-} from './src/legend-name.js?v=20260811-1';
+} from './src/legend-name.js?v=20260811-2';
 import {
   clearEditableState,
   loadEditableSession,
   saveEditableSession
-} from './src/persistence.js?v=20260811-1';
+} from './src/persistence.js?v=20260811-2';
 import {
   getNameGroupName,
   initializeCells,
   renderApp,
   renderColors
-} from './src/render.js?v=20260811-1';
-import { state } from './src/state.js?v=20260811-1';
+} from './src/render.js?v=20260811-2';
+import { state } from './src/state.js?v=20260811-2';
 import {
   closeAllPopups,
   closeModal,
@@ -50,13 +50,18 @@ import {
   handleViewportResize,
   positionPopup,
   showModal
-} from './src/ui.js?v=20260811-1';
+} from './src/ui.js?v=20260811-2';
 
 let desktopPicker = null;
 let unifiedPicker = null;
 const NAME_LIMIT_FEEDBACK_DURATION = 1500;
 const nameLimitFeedbackTimers = new WeakMap();
 let restoreDeletedTrigger = null;
+
+const RESTORE_GROUP_NAMES = {
+  row: ['틴른', '젯른', '쮼른', '셩른', '튀른'],
+  column: ['틴왼', '젯왼', '듀왼', '엄왼', '낭왼'],
+};
 
 function getDeletedGroupCount() {
   const { deletedRows, deletedColumns } = getEditableState();
@@ -73,7 +78,7 @@ function createRestoreGroupSection(title, axis, indexes) {
   const items = document.createElement('div');
   items.className = 'restore-group-items';
   indexes.forEach(index => {
-    const name = getNameGroupName(index);
+    const name = RESTORE_GROUP_NAMES[axis]?.[index] ?? getNameGroupName(index);
     const item = document.createElement('div');
     item.className = 'restore-group-item';
 
@@ -87,7 +92,7 @@ function createRestoreGroupSection(title, axis, indexes) {
     button.dataset.axis = axis;
     button.dataset.groupIndex = String(index);
     button.textContent = '복구';
-    button.setAttribute('aria-label', `${name} ${axis === 'row' ? '행' : '열'} 복구`);
+    button.setAttribute('aria-label', `${name} 복구`);
     item.append(label, button);
     items.appendChild(item);
   });
@@ -100,17 +105,17 @@ function renderRestoreDeletedModal() {
   if (!list) return;
   const { deletedRows, deletedColumns } = getEditableState();
   const sections = [];
-  if (deletedRows.length > 0) {
-    sections.push(createRestoreGroupSection('삭제한 행', 'row', deletedRows));
-  }
   if (deletedColumns.length > 0) {
-    sections.push(createRestoreGroupSection('삭제한 열', 'column', deletedColumns));
+    sections.push(createRestoreGroupSection('삭제한 왼', 'column', deletedColumns));
+  }
+  if (deletedRows.length > 0) {
+    sections.push(createRestoreGroupSection('삭제한 른', 'row', deletedRows));
   }
 
   if (sections.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'restore-groups-empty';
-    empty.textContent = '삭제된 행이나 열이 없습니다.';
+    empty.textContent = '삭제한 왼이나 른이 없습니다.';
     list.replaceChildren(empty);
   } else {
     list.replaceChildren(...sections);
@@ -128,8 +133,8 @@ function updateRestoreDeletedControl() {
   button.setAttribute(
     'aria-label',
     deletedCount === 0
-      ? '복구할 삭제된 행이나 열 없음'
-      : `삭제한 행과 열 ${deletedCount}개 복구`
+      ? '복구할 삭제한 왼이나 른 없음'
+      : `삭제한 왼과 른 ${deletedCount}개 복구`
   );
   badge.textContent = String(deletedCount);
   badge.hidden = deletedCount === 0;
@@ -418,11 +423,10 @@ function announceRestoredGroup(message) {
 }
 
 function restoreDeletedGroup(axis, index) {
-  const name = getNameGroupName(index);
-  const axisLabel = axis === 'row' ? '행' : '열';
+  const name = RESTORE_GROUP_NAMES[axis]?.[index] ?? getNameGroupName(index);
   const didRestore = commitMutation(`${axis}-restore`, () => restoreNameGroup(axis, index));
   if (!didRestore) return;
-  announceRestoredGroup(`${name} ${axisLabel}을 복구했습니다.`);
+  announceRestoredGroup(`${name}을 복구했습니다.`);
   requestAnimationFrame(() => {
     const nextButton = document.querySelector(
       '#restoreDeletedModalOverlay .restore-group-item-button'
@@ -435,7 +439,7 @@ function restoreEveryDeletedGroup() {
   const deletedCount = getDeletedGroupCount();
   if (deletedCount === 0) return;
   commitMutation('groups-restore-all', restoreAllNameGroups);
-  announceRestoredGroup(`삭제한 행과 열 ${deletedCount}개를 모두 복구했습니다.`);
+  announceRestoredGroup(`삭제한 왼과 른 ${deletedCount}개를 모두 복구했습니다.`);
   requestAnimationFrame(() => document.getElementById('closeRestoreDeletedBtn')?.focus());
 }
 

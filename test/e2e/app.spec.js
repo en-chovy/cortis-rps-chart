@@ -787,23 +787,31 @@ test('restores one deleted group with content, history, badge, and reload intact
   await expect(rowName).toBeHidden();
   await expect(columnName).toHaveCount(0);
   await expect(restoreButton).toBeEnabled();
-  await expect(restoreButton).toHaveAttribute('aria-label', '삭제한 행과 열 2개 복구');
+  await expect(restoreButton).toHaveAttribute('aria-label', '삭제한 왼과 른 2개 복구');
   await expect(restoreCount).toHaveText('2');
   await expect(restoreCount).toBeVisible();
 
   await restoreButton.click();
   await expect(restoreOverlay).toBeVisible();
-  await expect(restoreOverlay.getByRole('heading', { name: '삭제한 행', exact: true })).toBeVisible();
-  await expect(restoreOverlay.getByRole('heading', { name: '삭제한 열', exact: true })).toBeVisible();
-  await expect(restoreOverlay.getByRole('button', { name: '주훈 행 복구' })).toBeFocused();
-  await restoreOverlay.getByRole('button', { name: '주훈 행 복구' }).click();
+  await expect(restoreOverlay.getByRole('heading', { name: '삭제한 왼', exact: true })).toBeVisible();
+  await expect(restoreOverlay.getByRole('heading', { name: '삭제한 른', exact: true })).toBeVisible();
+  await expect(restoreOverlay.locator('.restore-group-name')).toHaveText(['낭왼', '쮼른']);
+  await expect(restoreOverlay.getByRole('button', { name: '낭왼 복구' })).toBeFocused();
+
+  const rightNameBox = await restoreOverlay.locator('.restore-group-name').last().boundingBox();
+  const rightRestoreBox = await restoreOverlay.getByRole('button', { name: '쮼른 복구' }).boundingBox();
+  expect(rightNameBox).not.toBeNull();
+  expect(rightRestoreBox).not.toBeNull();
+  expect(rightRestoreBox.x - (rightNameBox.x + rightNameBox.width)).toBeGreaterThanOrEqual(8);
+
+  await restoreOverlay.getByRole('button', { name: '쮼른 복구' }).click();
 
   await expect(rowName).toBeVisible();
   await expect(columnName).toHaveCount(0);
   await expect(cell).toHaveClass(/is-ghost/);
   await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
   await expect(restoreCount).toHaveText('1');
-  await expect(page.locator('#restoreDeletedStatus')).toHaveText('주훈 행을 복구했습니다.');
+  await expect(page.locator('#restoreDeletedStatus')).toHaveText('쮼른을 복구했습니다.');
 
   await page.locator('#closeRestoreDeletedBtn').click();
   await expect(restoreOverlay).toBeHidden();
@@ -824,14 +832,14 @@ test('restores one deleted group with content, history, badge, and reload intact
   await expect(page.locator('#redoButton')).toBeDisabled();
 
   await restoreButton.click();
-  await expect(restoreOverlay.getByRole('button', { name: '건호 열 복구' })).toBeFocused();
-  await restoreOverlay.getByRole('button', { name: '건호 열 복구' }).click();
+  await expect(restoreOverlay.getByRole('button', { name: '낭왼 복구' })).toBeFocused();
+  await restoreOverlay.getByRole('button', { name: '낭왼 복구' }).click();
   await expect(columnName).toBeVisible();
   await expect(table).toHaveAttribute('aria-colcount', '6');
   await expect(restoreButton).toBeDisabled();
   await expect(restoreCount).toBeHidden();
   await expect(page.locator('#restoreAllDeletedBtn')).toBeDisabled();
-  await expect(page.locator('#restoreDeletedStatus')).toHaveText('건호 열을 복구했습니다.');
+  await expect(page.locator('#restoreDeletedStatus')).toHaveText('낭왼을 복구했습니다.');
 });
 
 test('restores all deleted groups as one undoable operation', async ({ page }) => {
@@ -863,9 +871,9 @@ test('restores all deleted groups as one undoable operation', async ({ page }) =
   await expect(table).toHaveAttribute('aria-colcount', '6');
   await expect(restoreButton).toBeDisabled();
   await expect(restoreCount).toBeHidden();
-  await expect(restoreOverlay.locator('.restore-groups-empty')).toHaveText('삭제된 행이나 열이 없습니다.');
+  await expect(restoreOverlay.locator('.restore-groups-empty')).toHaveText('삭제한 왼이나 른이 없습니다.');
   await expect(page.locator('#restoreAllDeletedBtn')).toBeDisabled();
-  await expect(page.locator('#restoreDeletedStatus')).toHaveText('삭제한 행과 열 4개를 모두 복구했습니다.');
+  await expect(page.locator('#restoreDeletedStatus')).toHaveText('삭제한 왼과 른 4개를 모두 복구했습니다.');
 
   await page.locator('#closeRestoreDeletedBtn').click();
   await page.locator('#undoButton').click();

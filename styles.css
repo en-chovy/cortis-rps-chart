@@ -640,19 +640,22 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 }
 .restore-group-items { display: flex; flex-direction: column; gap: 8px; }
 .restore-group-item {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    min-height: 44px; padding: 0 0 0 12px; border-radius: 12px; background: #f2f2f7;
+    display: flex; align-items: center; gap: 10px; min-height: 44px;
 }
-.restore-group-name { color: #1c1c1e; font-size: 15px; font-weight: 500; }
+.restore-group-name {
+    display: flex; flex: 1; align-items: center; min-width: 0; min-height: 44px;
+    padding: 0 12px; border: 1px solid #e5e5ea; border-radius: 10px;
+    background: #f2f2f7; color: #1c1c1e; font-size: 15px; font-weight: 500;
+}
 .restore-group-item-button {
-    align-self: stretch; min-width: 64px; min-height: 44px; padding: 0 14px;
-    border: 0; border-radius: 10px; background: #e8f2ff; color: #0066cc;
+    flex: 0 0 auto; align-self: center; min-width: 64px; min-height: 44px; padding: 0 14px;
+    border: 1px solid #b8d7ff; border-radius: 10px; background: #fff; color: #0066cc;
     font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
     transition:
         background-color var(--motion-fast) var(--ease-standard),
         transform var(--motion-press) var(--ease-standard);
 }
-.restore-group-item-button:active { background: #d8eaff; transform: scale(0.96); }
+.restore-group-item-button:active { background: #e8f2ff; transform: scale(0.96); }
 .restore-groups-empty { margin: 8px 0 !important; color: #636366 !important; text-align: center; }
 .restore-deleted-actions { padding-top: 2px; }
 .restore-deleted-actions button:disabled { opacity: 0.45; cursor: default; }
