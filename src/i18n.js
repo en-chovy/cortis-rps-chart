@@ -4,6 +4,7 @@ const SUPPORTED_LANGUAGES = new Set(['ko', 'en']);
 const COPY = {
   ko: {
     'page.title': 'CORTIS RPS 취향표',
+    'language.add': '언어 추가',
     'legend.1': 'OTP',
     'legend.2': '좋음',
     'legend.3': '보통',
@@ -27,7 +28,7 @@ const COPY = {
     'contact.releaseDescription': '업데이트 내역은 포스타입의 릴리즈 노트에서 확인할 수 있습니다. 문의와 버그 제보는 해당 게시글의 댓글로 남겨 주세요.',
     'contact.openPostype': '포스타입에서 확인하기',
     'contact.contributeTitle': '다국어 지원에 기여하기',
-    'contact.contributeDescription': '현지 팬덤에서 사용하는 멤버명·씨피명 표기를 알고 있거나, 번역 및 다국어 지원 개발에 기여하고 싶다면 X의 @setmefuri로 연락해 주세요.',
+    'contact.contributeDescription': '새 언어 지원을 제안하거나, 현지 팬덤에서 사용하는 멤버명·씨피명 표기를 제보하거나, 번역 및 다국어 지원 개발에 기여하고 싶다면 X의 @setmefuri로 연락해 주세요.',
     'contact.openX': 'X에서 연락하기',
     'common.cancel': '취소',
     'common.save': '저장',
@@ -56,6 +57,7 @@ const COPY = {
   },
   en: {
     'page.title': 'CORTIS RPS Chart',
+    'language.add': 'Add language',
     'legend.1': 'OTP',
     'legend.2': 'Like',
     'legend.3': 'Neutral',
@@ -79,7 +81,7 @@ const COPY = {
     'contact.releaseDescription': 'View update details in the release notes on Postype. Please leave questions and bug reports in the comments on that post.',
     'contact.openPostype': 'Open Postype',
     'contact.contributeTitle': 'Contribute to localization',
-    'contact.contributeDescription': 'If you know the member or ship names used by fans in your region, or would like to contribute to translations or localization development, contact @setmefuri on X.',
+    'contact.contributeDescription': 'To suggest another language, share the member or ship names used by fans in your region, or contribute to translation or localization development, contact @setmefuri on X.',
     'contact.openX': 'Contact on X',
     'common.cancel': 'Cancel',
     'common.save': 'Save',

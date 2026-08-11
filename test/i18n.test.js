@@ -40,8 +40,9 @@ test('stores an explicit language choice and translates confirmed copy', () => {
   assert.equal(storage.getItem(languageStorageKey), 'en');
   assert.equal(t('category.settingsTitle'), 'Category settings');
   assert.equal(t('restore.trigger'), 'Restore top/bottom');
+  assert.equal(t('language.add'), 'Add language');
   assert.equal(t('contact.contributeTitle'), 'Contribute to localization');
-  assert.match(t('contact.contributeDescription'), /@setmefuri/);
+  assert.match(t('contact.contributeDescription'), /suggest another language.*@setmefuri/);
 });
 
 test('localizes untouched default legends without translating custom names', () => {

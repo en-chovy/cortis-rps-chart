@@ -1,6 +1,6 @@
-import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260811-6';
-import { createColorPicker } from './src/color-picker.js?v=20260811-6';
-import { initExportControls } from './src/export.js?v=20260811-6';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260811-7';
+import { createColorPicker } from './src/color-picker.js?v=20260811-7';
+import { initExportControls } from './src/export.js?v=20260811-7';
 import {
   captureEditableState,
   clearHistory,
@@ -9,7 +9,7 @@ import {
   initHistoryControls,
   redoEdit,
   undoEdit
-} from './src/history.js?v=20260811-6';
+} from './src/history.js?v=20260811-7';
 import {
   applyDocumentTranslations,
   getLanguage,
@@ -17,7 +17,7 @@ import {
   initializeLanguage,
   setLanguage,
   t
-} from './src/i18n.js?v=20260811-6';
+} from './src/i18n.js?v=20260811-7';
 import {
   addLegend,
   createInitialEditableState,
@@ -34,23 +34,23 @@ import {
   restoreNameGroup,
   setLegendColor,
   toggleGhostCell
-} from './src/model.js?v=20260811-6';
+} from './src/model.js?v=20260811-7';
 import {
   LEGEND_NAME_MAX_LENGTH,
   limitLegendName
-} from './src/legend-name.js?v=20260811-6';
+} from './src/legend-name.js?v=20260811-7';
 import {
   clearEditableState,
   loadEditableSession,
   saveEditableSession
-} from './src/persistence.js?v=20260811-6';
+} from './src/persistence.js?v=20260811-7';
 import {
   getNameGroupName,
   initializeCells,
   renderApp,
   renderColors
-} from './src/render.js?v=20260811-6';
-import { state } from './src/state.js?v=20260811-6';
+} from './src/render.js?v=20260811-7';
+import { state } from './src/state.js?v=20260811-7';
 import {
   closeAllPopups,
   closeModal,
@@ -58,7 +58,7 @@ import {
   handleViewportResize,
   positionPopup,
   showModal
-} from './src/ui.js?v=20260811-6';
+} from './src/ui.js?v=20260811-7';
 
 let desktopPicker = null;
 let unifiedPicker = null;
@@ -193,6 +193,11 @@ function initLanguageControls() {
     setLanguageMenuOpen(menu.hidden, { focusCurrent: menu.hidden });
   });
   menu.addEventListener('click', event => {
+    if (event.target.closest('.language-request')) {
+      setLanguageMenuOpen(false);
+      openContact({ localizationEntry: true });
+      return;
+    }
     const option = event.target.closest('.language-option');
     if (!option || !setLanguage(option.dataset.language)) return;
     applySelectedLanguage();
@@ -455,8 +460,15 @@ function cancelReset() {
   closeModal('resetModalOverlay');
 }
 
-function openContact() {
+function openContact({ localizationEntry = false } = {}) {
+  const overlay = document.getElementById('contactModalOverlay');
+  overlay?.classList.toggle('is-localization-entry', localizationEntry);
   showModal('contactModalOverlay');
+  if (localizationEntry) {
+    requestAnimationFrame(() => {
+      document.getElementById('contactXLink')?.focus({ preventScroll: true });
+    });
+  }
 }
 
 function closeContact() {
@@ -687,7 +699,7 @@ function initModalButtons() {
   document.getElementById('restoreDeletedButton')?.addEventListener('click', openRestoreDeleted);
   document.getElementById('closeRestoreDeletedBtn')?.addEventListener('click', closeRestoreDeleted);
   document.getElementById('restoreAllDeletedBtn')?.addEventListener('click', restoreEveryDeletedGroup);
-  document.getElementById('contactButton')?.addEventListener('click', openContact);
+  document.getElementById('contactButton')?.addEventListener('click', () => openContact());
   document.getElementById('closeContactBtn')?.addEventListener('click', closeContact);
   document.getElementById('restoreDeletedList')?.addEventListener('click', event => {
     const button = event.target.closest('.restore-group-item-button');

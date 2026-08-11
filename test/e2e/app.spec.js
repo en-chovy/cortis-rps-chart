@@ -91,6 +91,45 @@ test('opens localized release note and contribution routes from the footer', asy
   await expect(overlay).toBeHidden();
 });
 
+test('opens localization contribution from the language add action without changing state', async ({ page }) => {
+  const firstCell = page.locator('.paintable').first();
+  await firstCell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+
+  await page.locator('#languageButton').click();
+  const request = page.locator('#languageMenu .language-request');
+  await expect(request).toHaveText('언어 추가');
+  await expect(request).toHaveAttribute('role', 'menuitem');
+  await request.click();
+
+  const overlay = page.locator('#contactModalOverlay');
+  await expect(page.locator('#languageMenu')).toBeHidden();
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveClass(/is-localization-entry/);
+  await expect(overlay.locator('.contact-section-localization h4')).toHaveCSS(
+    'color',
+    'rgb(0, 102, 204)'
+  );
+  await expect(overlay.locator('.contact-section-localization p')).toContainText(
+    '새 언어 지원을 제안하거나'
+  );
+  await expect(page.locator('#contactXLink')).toBeFocused();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.locator('#closeContactBtn').click();
+  await page.locator('#languageButton').click();
+  await page.locator('#languageMenu [data-language="en"]').click();
+  await page.locator('#languageButton').click();
+  await expect(request).toHaveText('Add language');
+  await request.click();
+  await expect(overlay.locator('.contact-section-localization p')).toContainText(
+    'To suggest another language'
+  );
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+});
+
 test('uses compact text hierarchy throughout modals', async ({ page }, testInfo) => {
   await page.locator('#resetButton').click();
   const resetOverlay = page.locator('#resetModalOverlay');
