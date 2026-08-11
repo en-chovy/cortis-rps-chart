@@ -1,40 +1,91 @@
-import { cloneEditableState, getEditableState, replaceEditableState } from './model.js?v=20260810-4';
+import { cloneEditableState, getEditableState, replaceEditableState } from './model.js?v=20260811-1';
 
 const HISTORY_LIMIT = 100;
-const undoStack = [];
-const redoStack = [];
+let timeline = null;
 let render = () => {};
 let persist = () => {};
 
-export function configureHistory({ renderApp, persistEditableState = () => {} }) {
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function statesMatch(first, second) {
+  return JSON.stringify(first) === JSON.stringify(second);
+}
+
+function createEmptyTimeline(snapshot = cloneEditableState()) {
+  return {
+    base: clone(snapshot),
+    entries: [],
+    cursor: 0
+  };
+}
+
+function getCurrentTimelineSnapshot() {
+  if (!timeline) return cloneEditableState();
+  return timeline.cursor === 0
+    ? timeline.base
+    : timeline.entries[timeline.cursor - 1].state;
+}
+
+function persistCurrentSession() {
+  if (!timeline) timeline = createEmptyTimeline();
+  persist(cloneEditableState(), clone(timeline));
+}
+
+export function configureHistory({
+  renderApp,
+  persistEditableSession = () => {},
+  initialHistory = null
+}) {
   render = renderApp;
-  persist = persistEditableState;
+  persist = persistEditableSession;
+  timeline = initialHistory ? clone(initialHistory) : createEmptyTimeline();
+
+  if (!statesMatch(getCurrentTimelineSnapshot(), cloneEditableState())) {
+    timeline = createEmptyTimeline();
+  }
 }
 
 export function captureEditableState() {
   return cloneEditableState();
 }
 
+export function getHistoryState() {
+  if (!timeline) timeline = createEmptyTimeline();
+  return clone(timeline);
+}
+
 export function restoreEditableState(snapshot) {
   replaceEditableState(snapshot);
   render();
-  persist(cloneEditableState());
+  persistCurrentSession();
 }
 
 function updateControls() {
   const undoButton = document.getElementById('undoButton');
   const redoButton = document.getElementById('redoButton');
-  if (undoButton) undoButton.disabled = undoStack.length === 0;
-  if (redoButton) redoButton.disabled = redoStack.length === 0;
+  if (undoButton) undoButton.disabled = !timeline || timeline.cursor === 0;
+  if (redoButton) redoButton.disabled = !timeline || timeline.cursor >= timeline.entries.length;
 }
 
 export function recordHistory(type, before, after = captureEditableState()) {
-  if (JSON.stringify(before) === JSON.stringify(after)) return false;
+  if (statesMatch(before, after)) return false;
+  if (!timeline || !statesMatch(getCurrentTimelineSnapshot(), before)) {
+    timeline = createEmptyTimeline(before);
+  }
 
-  undoStack.push({ type, before, after });
-  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
-  redoStack.length = 0;
-  persist(after);
+  timeline.entries.splice(timeline.cursor);
+  timeline.entries.push({ type, state: clone(after) });
+  timeline.cursor = timeline.entries.length;
+
+  while (timeline.entries.length > HISTORY_LIMIT) {
+    const oldestEntry = timeline.entries.shift();
+    timeline.base = clone(oldestEntry.state);
+    timeline.cursor -= 1;
+  }
+
+  persistCurrentSession();
   updateControls();
   return true;
 }
@@ -43,24 +94,28 @@ export function commitMutation(type, mutate) {
   const before = captureEditableState();
   mutate(getEditableState());
   const after = captureEditableState();
-  if (JSON.stringify(before) === JSON.stringify(after)) return false;
+  if (statesMatch(before, after)) return false;
   render();
   return recordHistory(type, before, after);
 }
 
 export function undoEdit() {
-  const entry = undoStack.pop();
-  if (!entry) return;
-  restoreEditableState(entry.before);
-  redoStack.push(entry);
+  if (!timeline || timeline.cursor === 0) return;
+  timeline.cursor -= 1;
+  const snapshot = getCurrentTimelineSnapshot();
+  replaceEditableState(snapshot);
+  render();
+  persistCurrentSession();
   updateControls();
 }
 
 export function redoEdit() {
-  const entry = redoStack.pop();
-  if (!entry) return;
-  restoreEditableState(entry.after);
-  undoStack.push(entry);
+  if (!timeline || timeline.cursor >= timeline.entries.length) return;
+  timeline.cursor += 1;
+  const snapshot = getCurrentTimelineSnapshot();
+  replaceEditableState(snapshot);
+  render();
+  persistCurrentSession();
   updateControls();
 }
 
@@ -70,8 +125,8 @@ export function initHistoryControls() {
   updateControls();
 }
 
-export function clearHistory() {
-  undoStack.length = 0;
-  redoStack.length = 0;
+export function clearHistory({ persistSession = false } = {}) {
+  timeline = createEmptyTimeline();
+  if (persistSession) persistCurrentSession();
   updateControls();
 }

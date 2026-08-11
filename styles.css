@@ -55,7 +55,9 @@ a,
 .menu-option,
 .menu-reset,
 .menu-icon-action,
-.menu-delete-group {
+.menu-delete-group,
+.restore-deleted-button,
+.restore-group-item-button {
     touch-action: manipulation;
 }
 
@@ -146,17 +148,18 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 .chart-frame {
     --visible-table-column-count: 6;
     position: relative;
-    width: calc(
-        var(--cell-width) * var(--visible-table-column-count)
-        + var(--grid-line) + var(--grid-line)
-    );
+    width: calc(var(--cell-width) * var(--visible-table-column-count));
     margin: 0 auto;
 }
-.table-shell{ width: 100%; margin: 0 auto; box-sizing: border-box; border: var(--grid-line) solid #333; border-radius: 12px; overflow: hidden; background: #fff; }
+.table-shell{ width: 100%; margin: 0 auto; box-sizing: border-box; border: 0; border-radius: 12px; overflow: hidden; background: #fff; }
 #rpsTable{ width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; border: 0; border-radius: 0; overflow: visible; background-color: #fff; }
-#rpsTable th, #rpsTable td { width: var(--cell-width); border-left: var(--grid-line) solid #333; border-top: var(--grid-line) solid #333; height: var(--cell-height); text-align: center; font-size: clamp(10px, 2vw, 16px); font-weight: 400; box-sizing: border-box; background-clip: padding-box; }
-#rpsTable tr > *:first-child{ border-left: 0; background-color: #636366; color: white; font-weight: 500; }
-#rpsTable thead tr:first-child > *{ border-top: 0; background-color: #636366; color: white; font-weight: 500; }
+#rpsTable th, #rpsTable td { width: var(--cell-width); border: 0; height: var(--cell-height); text-align: center; font-size: clamp(10px, 2vw, 16px); font-weight: 400; box-sizing: border-box; background-clip: border-box; }
+#rpsTable tr > *:first-child{ background-color: #636366; color: white; font-weight: 500; }
+#rpsTable thead tr:first-child > *{ background-color: #636366; color: white; font-weight: 500; }
+.table-grid-overlay {
+    position: absolute; inset: 0; z-index: 1; display: block;
+    width: 100%; height: 100%; overflow: visible; pointer-events: none;
+}
 .paintable, .paintable-name {
     cursor: pointer;
     transition:
@@ -224,7 +227,7 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 }
 
 .history-controls {
-    display: flex; justify-content: center; align-items: center; gap: 8px;
+    display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px;
     margin-top: 16px;
 }
 .history-button {
@@ -247,7 +250,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     background: #fff; border-color: #e5e5ea; color: #c7c7cc;
     cursor: default; opacity: 0.7; transform: none;
 }
-.reset-button {
+.reset-button,
+.restore-deleted-button {
     min-height: 34px; padding: 0 12px; border: 1px solid #d1d1d6; border-radius: 10px;
     background: #fff; color: #636366; font-family: inherit; font-size: 12px; font-weight: 500;
     cursor: pointer;
@@ -256,6 +260,23 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
         border-color var(--motion-fast) var(--ease-standard),
         color var(--motion-fast) var(--ease-standard),
         transform var(--motion-press) var(--ease-standard);
+}
+.restore-deleted-button {
+    position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.restore-deleted-button:active { background: #eef5ff; transform: scale(0.97); }
+.restore-deleted-button:disabled {
+    background: #fff; border-color: #e5e5ea; color: #c7c7cc;
+    cursor: default; opacity: 0.7; transform: none;
+}
+.restore-deleted-button:focus-visible,
+.restore-group-item-button:focus-visible {
+    outline: 3px solid rgba(0, 122, 255, 0.24); outline-offset: 2px;
+}
+.restore-deleted-count {
+    min-width: 17px; height: 17px; box-sizing: border-box; padding: 0 5px;
+    border-radius: 999px; background: #0066cc; color: #fff;
+    font-size: 10px; font-weight: 600; line-height: 17px; text-align: center;
 }
 .reset-button:active { background: #ffe5e3; transform: scale(0.97); }
 
@@ -273,11 +294,9 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 .image-export-frame .circle-display { width: 16px; height: 16px; }
 .image-export-frame .editable-label { font-size: 12px; }
 .image-export-frame .chart-frame {
-    width: calc(
-        var(--cell-width) * var(--visible-table-column-count)
-        + var(--grid-line) + var(--grid-line)
-    );
+    width: calc(var(--cell-width) * var(--visible-table-column-count));
 }
+.image-export-frame .table-grid-overlay { display: none; }
 .image-export-frame #rpsTable th,
 .image-export-frame #rpsTable td { font-size: 10px; }
 .image-export-frame .chart-timestamp { top: calc(100% + 8px); font-size: 10px; }
@@ -608,6 +627,36 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
 .btn-cancel { background: #f2f2f7; color: #3a3a3c; }
 .btn-delete { background: #ff453a !important; color: white; }
 
+.restore-deleted-modal { max-height: min(640px, calc(100dvh - 32px)); }
+#restoreDeletedModalDescription { margin: 0 0 16px; color: #636366; font-size: 13px; line-height: 1.45; }
+.restore-deleted-list {
+    display: flex; flex-direction: column; gap: 18px;
+    max-height: min(380px, calc(100dvh - 270px)); overflow-y: auto;
+    margin: 0 -6px 20px; padding: 0 6px;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+.restore-group-section h4 {
+    margin: 0 0 8px; color: #636366; font-size: 12px; font-weight: 600;
+}
+.restore-group-items { display: flex; flex-direction: column; gap: 8px; }
+.restore-group-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    min-height: 44px; padding: 0 0 0 12px; border-radius: 12px; background: #f2f2f7;
+}
+.restore-group-name { color: #1c1c1e; font-size: 15px; font-weight: 500; }
+.restore-group-item-button {
+    align-self: stretch; min-width: 64px; min-height: 44px; padding: 0 14px;
+    border: 0; border-radius: 10px; background: #e8f2ff; color: #0066cc;
+    font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition:
+        background-color var(--motion-fast) var(--ease-standard),
+        transform var(--motion-press) var(--ease-standard);
+}
+.restore-group-item-button:active { background: #d8eaff; transform: scale(0.96); }
+.restore-groups-empty { margin: 8px 0 !important; color: #636366 !important; text-align: center; }
+.restore-deleted-actions { padding-top: 2px; }
+.restore-deleted-actions button:disabled { opacity: 0.45; cursor: default; }
+
 @media (hover: hover) and (pointer: fine) {
     .circle-display:hover { transform: scale(1.12); }
     .editable-label:hover { color: #8e8e93; text-decoration: underline; }
@@ -624,6 +673,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     .btn-save-image:hover { background: #f2f2f7; border-color: #c7c7cc; }
     .history-button:hover { background: #f2f2f7; border-color: #c7c7cc; color: #3a3a3c; }
     .reset-button:hover { background: #fff1f0; border-color: #ffc9c5; color: #d70015; }
+    .restore-deleted-button:not(:disabled):hover { background: #eef5ff; border-color: #b8d7ff; color: #0066cc; }
+    .restore-group-item-button:hover { background: #d8eaff; }
     .btn-done:hover,
     .btn-save:hover { background: #006ee6; }
     .btn-cancel:hover { background: #e5e5ea; }
@@ -678,7 +729,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     .btn-save-image { min-height: 38px; font-size: 13px; }
     .history-controls { margin-top: 14px; }
     .history-button { width: 44px; height: 44px; border-radius: 10px; }
-    .reset-button { min-height: 44px; padding: 0 12px; border-radius: 10px; font-size: 12px; }
+    .reset-button,
+    .restore-deleted-button { min-height: 44px; padding: 0 12px; border-radius: 10px; font-size: 12px; }
     .circle-display {
         width: clamp(16px, 2.8vw, 24px);
         height: clamp(16px, 2.8vw, 24px);
@@ -695,13 +747,12 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     }
     .table-shell {
         border-radius: 12px;
-        border: var(--grid-line) solid #333;
+        border: 0;
     }
     #rpsTable th, #rpsTable td {
         font-size: clamp(10px, 2vw, 16px);
         font-weight: 400;
-        border-left: var(--grid-line) solid #333;
-        border-top: var(--grid-line) solid #333;
+        border: 0;
     }
     #rpsTable tr > *:first-child {
         font-weight: 500;
@@ -770,6 +821,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; margin: clamp(24px, 
     .btn-save-image:active,
     .history-button:active,
     .reset-button:active,
+    .restore-deleted-button:active,
+    .restore-group-item-button:active,
     .modal-buttons button:active,
     .unified-action-buttons button:active {
         transform: none !important;

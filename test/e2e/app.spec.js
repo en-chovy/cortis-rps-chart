@@ -4,6 +4,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
+async function deleteRenderedNameGroup(page, axis, groupIndex) {
+  await page.locator(
+    `.paintable-name[data-axis="${axis}"][data-group-index="${groupIndex}"]`
+  ).click();
+  await page.locator('#cellMenu .menu-delete-group').click();
+}
+
 test('renders the initial chart and controls', async ({ page }) => {
   await expect(page.locator('h1')).toHaveText('CORTIS RPS 취향표');
   await expect(page.locator('.legend-item')).toHaveCount(5);
@@ -456,7 +463,8 @@ test('restores editable content after reload and resets it explicitly', async ({
   await page.reload();
   await expect(page.locator('#label-6')).toHaveText('새 범례');
   await expect(page.locator('.paintable').first()).toHaveCSS('background-color', 'rgba(204, 204, 204, 0.5)');
-  await expect(page.locator('#undoButton')).toBeDisabled();
+  await expect(page.locator('#undoButton')).toBeEnabled();
+  await expect(page.locator('#redoButton')).toBeDisabled();
 
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#saveImageButton').click();
@@ -476,6 +484,35 @@ test('restores editable content after reload and resets it explicitly', async ({
   await expect(page.locator('.legend-item')).toHaveCount(5);
   await expect(page.locator('.paintable').first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect(page.locator('#undoButton')).toBeDisabled();
+});
+
+test('keeps both sides of a middle history cursor through reload', async ({ page }) => {
+  const cell = page.locator('.paintable[data-cell-index="18"]');
+  const menu = page.locator('#cellMenu');
+
+  await cell.click();
+  await menu.locator('.menu-option').first().click();
+  await cell.click();
+  await menu.locator('.menu-ghost-toggle').click();
+  await expect(cell).toHaveClass(/is-ghost/);
+
+  await page.locator('#undoButton').click();
+  await expect(cell).not.toHaveClass(/is-ghost/);
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  await expect(page.locator('#undoButton')).toBeEnabled();
+  await expect(page.locator('#redoButton')).toBeEnabled();
+
+  await page.reload();
+  await expect(cell).not.toHaveClass(/is-ghost/);
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  await expect(page.locator('#undoButton')).toBeEnabled();
+  await expect(page.locator('#redoButton')).toBeEnabled();
+
+  await page.locator('#redoButton').click();
+  await expect(cell).toHaveClass(/is-ghost/);
+  await expect(page.locator('#redoButton')).toBeDisabled();
+  await page.locator('#undoButton').click();
+  await expect(cell).not.toHaveClass(/is-ghost/);
 });
 
 test('migrates an older long legend name without discarding the chart', async ({ page }) => {
@@ -640,7 +677,7 @@ test('keeps a ghost cell independent from paint through history, reload, and res
   await expect(cell).toHaveClass(/is-ghost/);
   await expect(cell).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
-  await expect(page.locator('#undoButton')).toBeDisabled();
+  await expect(page.locator('#undoButton')).toBeEnabled();
   await expect(page.locator('#redoButton')).toBeDisabled();
 
   await cell.click();
@@ -724,7 +761,134 @@ test('deletes rows and columns with stable sizing through history and reload', a
   await expect(table).toHaveAttribute('aria-colcount', '5');
   expect(await chartFrame.evaluate(element => element.getBoundingClientRect().width))
     .toBeCloseTo(deletedColumnWidth, 1);
-  await expect(page.locator('#undoButton')).toBeDisabled();
+  await expect(page.locator('#undoButton')).toBeEnabled();
+  await expect(page.locator('#redoButton')).toBeDisabled();
+});
+
+test('restores one deleted group with content, history, badge, and reload intact', async ({ page }) => {
+  const table = page.locator('#rpsTable');
+  const rowName = page.locator('.paintable-name[data-axis="row"][data-group-index="2"]');
+  const columnName = page.locator('.paintable-name[data-axis="column"][data-group-index="4"]');
+  const cell = page.locator('.paintable[data-cell-index="8"]');
+  const restoreButton = page.locator('#restoreDeletedButton');
+  const restoreCount = page.locator('#restoreDeletedCount');
+  const restoreOverlay = page.locator('#restoreDeletedModalOverlay');
+
+  await expect(restoreButton).toBeDisabled();
+  await expect(restoreCount).toBeHidden();
+
+  await cell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+  await cell.click();
+  await page.locator('#cellMenu .menu-ghost-toggle').click();
+  await deleteRenderedNameGroup(page, 'row', 2);
+  await deleteRenderedNameGroup(page, 'column', 4);
+
+  await expect(rowName).toBeHidden();
+  await expect(columnName).toHaveCount(0);
+  await expect(restoreButton).toBeEnabled();
+  await expect(restoreButton).toHaveAttribute('aria-label', '삭제한 행과 열 2개 복구');
+  await expect(restoreCount).toHaveText('2');
+  await expect(restoreCount).toBeVisible();
+
+  await restoreButton.click();
+  await expect(restoreOverlay).toBeVisible();
+  await expect(restoreOverlay.getByRole('heading', { name: '삭제한 행', exact: true })).toBeVisible();
+  await expect(restoreOverlay.getByRole('heading', { name: '삭제한 열', exact: true })).toBeVisible();
+  await expect(restoreOverlay.getByRole('button', { name: '주훈 행 복구' })).toBeFocused();
+  await restoreOverlay.getByRole('button', { name: '주훈 행 복구' }).click();
+
+  await expect(rowName).toBeVisible();
+  await expect(columnName).toHaveCount(0);
+  await expect(cell).toHaveClass(/is-ghost/);
+  await expect(cell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  await expect(restoreCount).toHaveText('1');
+  await expect(page.locator('#restoreDeletedStatus')).toHaveText('주훈 행을 복구했습니다.');
+
+  await page.locator('#closeRestoreDeletedBtn').click();
+  await expect(restoreOverlay).toBeHidden();
+  await page.locator('#undoButton').click();
+  await expect(rowName).toBeHidden();
+  await expect(restoreCount).toHaveText('2');
+  await page.locator('#redoButton').click();
+  await expect(rowName).toBeVisible();
+  await expect(restoreCount).toHaveText('1');
+
+  await page.reload();
+  await expect(rowName).toBeVisible();
+  await expect(columnName).toHaveCount(0);
+  await expect(cell).toHaveClass(/is-ghost/);
+  await expect(restoreCount).toHaveText('1');
+  await expect(restoreButton).toBeEnabled();
+  await expect(page.locator('#undoButton')).toBeEnabled();
+  await expect(page.locator('#redoButton')).toBeDisabled();
+
+  await restoreButton.click();
+  await expect(restoreOverlay.getByRole('button', { name: '건호 열 복구' })).toBeFocused();
+  await restoreOverlay.getByRole('button', { name: '건호 열 복구' }).click();
+  await expect(columnName).toBeVisible();
+  await expect(table).toHaveAttribute('aria-colcount', '6');
+  await expect(restoreButton).toBeDisabled();
+  await expect(restoreCount).toBeHidden();
+  await expect(page.locator('#restoreAllDeletedBtn')).toBeDisabled();
+  await expect(page.locator('#restoreDeletedStatus')).toHaveText('건호 열을 복구했습니다.');
+});
+
+test('restores all deleted groups as one undoable operation', async ({ page }) => {
+  const table = page.locator('#rpsTable');
+  const restoreButton = page.locator('#restoreDeletedButton');
+  const restoreCount = page.locator('#restoreDeletedCount');
+  const restoreOverlay = page.locator('#restoreDeletedModalOverlay');
+  const rowOne = page.locator('.paintable-name[data-axis="row"][data-group-index="1"]');
+  const rowThree = page.locator('.paintable-name[data-axis="row"][data-group-index="3"]');
+  const columnZero = page.locator('.paintable-name[data-axis="column"][data-group-index="0"]');
+  const columnFour = page.locator('.paintable-name[data-axis="column"][data-group-index="4"]');
+
+  await deleteRenderedNameGroup(page, 'row', 1);
+  await deleteRenderedNameGroup(page, 'row', 3);
+  await deleteRenderedNameGroup(page, 'column', 0);
+  await deleteRenderedNameGroup(page, 'column', 4);
+  await expect(restoreCount).toHaveText('4');
+  await expect(table).toHaveAttribute('aria-rowcount', '4');
+  await expect(table).toHaveAttribute('aria-colcount', '4');
+
+  await restoreButton.click();
+  await expect(restoreOverlay.locator('.restore-group-item-button')).toHaveCount(4);
+  await page.locator('#restoreAllDeletedBtn').click();
+  await expect(rowOne).toBeVisible();
+  await expect(rowThree).toBeVisible();
+  await expect(columnZero).toBeVisible();
+  await expect(columnFour).toBeVisible();
+  await expect(table).toHaveAttribute('aria-rowcount', '6');
+  await expect(table).toHaveAttribute('aria-colcount', '6');
+  await expect(restoreButton).toBeDisabled();
+  await expect(restoreCount).toBeHidden();
+  await expect(restoreOverlay.locator('.restore-groups-empty')).toHaveText('삭제된 행이나 열이 없습니다.');
+  await expect(page.locator('#restoreAllDeletedBtn')).toBeDisabled();
+  await expect(page.locator('#restoreDeletedStatus')).toHaveText('삭제한 행과 열 4개를 모두 복구했습니다.');
+
+  await page.locator('#closeRestoreDeletedBtn').click();
+  await page.locator('#undoButton').click();
+  await expect(rowOne).toBeHidden();
+  await expect(rowThree).toBeHidden();
+  await expect(columnZero).toHaveCount(0);
+  await expect(columnFour).toHaveCount(0);
+  await expect(restoreCount).toHaveText('4');
+  await expect(table).toHaveAttribute('aria-rowcount', '4');
+  await expect(table).toHaveAttribute('aria-colcount', '4');
+
+  await page.locator('#redoButton').click();
+  await expect(rowOne).toBeVisible();
+  await expect(rowThree).toBeVisible();
+  await expect(columnZero).toBeVisible();
+  await expect(columnFour).toBeVisible();
+  await expect(restoreButton).toBeDisabled();
+
+  await page.reload();
+  await expect(table).toHaveAttribute('aria-rowcount', '6');
+  await expect(table).toHaveAttribute('aria-colcount', '6');
+  await expect(restoreButton).toBeDisabled();
+  await expect(page.locator('#undoButton')).toBeEnabled();
   await expect(page.locator('#redoButton')).toBeDisabled();
 });
 

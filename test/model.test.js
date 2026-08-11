@@ -11,6 +11,8 @@ import {
   paintNameGroup,
   renameLegend,
   replaceEditableState,
+  restoreAllNameGroups,
+  restoreNameGroup,
   setLegendColor,
   toggleGhostCell
 } from '../src/model.js';
@@ -66,6 +68,49 @@ test('accepts every valid group deletion and ignores invalid group targets', () 
   assert.deepEqual(state.deletedRows, [0, 1, 2, 3, 4]);
   assert.deepEqual(state.deletedColumns, [0, 1, 2, 3, 4]);
   assert.equal(state.cells.length, 20);
+});
+
+test('restores one deleted group idempotently without changing cell content', () => {
+  paintCell(8, 2);
+  paintCell(18, 4);
+  toggleGhostCell(8);
+  toggleGhostCell(18);
+  deleteNameGroup('row', 2);
+  deleteNameGroup('column', 4);
+  const cells = [...getEditableState().cells];
+  const ghostCells = [...getEditableState().ghostCells];
+
+  restoreNameGroup('row', 2);
+  restoreNameGroup('row', 2);
+  restoreNameGroup('diagonal', 4);
+  restoreNameGroup('column', -1);
+
+  const state = getEditableState();
+  assert.deepEqual(state.deletedRows, []);
+  assert.deepEqual(state.deletedColumns, [4]);
+  assert.deepEqual(state.cells, cells);
+  assert.deepEqual(state.ghostCells, ghostCells);
+});
+
+test('restores every deleted group idempotently without changing cell content', () => {
+  paintCell(3, 1);
+  paintCell(11, 5);
+  toggleGhostCell(11);
+  deleteNameGroup('row', 0);
+  deleteNameGroup('row', 3);
+  deleteNameGroup('column', 1);
+  deleteNameGroup('column', 4);
+  const cells = [...getEditableState().cells];
+  const ghostCells = [...getEditableState().ghostCells];
+
+  restoreAllNameGroups();
+  restoreAllNameGroups();
+
+  const state = getEditableState();
+  assert.deepEqual(state.deletedRows, []);
+  assert.deepEqual(state.deletedColumns, []);
+  assert.deepEqual(state.cells, cells);
+  assert.deepEqual(state.ghostCells, ghostCells);
 });
 
 test('name-group painting leaves deleted intersections untouched', () => {

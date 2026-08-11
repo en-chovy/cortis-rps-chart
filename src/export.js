@@ -4,8 +4,8 @@ const EXPORT_PRESET = {
   contentWidth: 443,
   cellWidth: 69.5,
   cellHeight: 39.75,
-  gridLineWidth: 1,
-  gridColor: '#333333',
+  gridLineWidth: 2 / 3,
+  gridColor: '#333',
   legendBorderWidth: 1,
   legendBorderColor: 'rgba(0, 0, 0, 0.1)'
 };
@@ -246,7 +246,7 @@ function drawExportFrameToCanvas(exportFrame) {
     const measuredShellRect = getRelativeRect(tableShell, frameRect);
     const shellStyle = getComputedStyle(tableShell);
     const radius = Number.parseFloat(shellStyle.borderTopLeftRadius) || 0;
-    const outerBorderWidth = EXPORT_PRESET.gridLineWidth;
+    const halfGridLineWidth = EXPORT_PRESET.gridLineWidth / 2;
     const cells = [...table.querySelectorAll('th, td')].filter(isRenderedElement);
     const bodyRows = [...table.tBodies[0].rows].filter(isRenderedElement);
     const tableRows = [table.rows[0], ...bodyRows];
@@ -255,13 +255,13 @@ function drawExportFrameToCanvas(exportFrame) {
     const shellRect = {
       x: snapToOutputPixel(measuredShellRect.x),
       y: snapToOutputPixel(measuredShellRect.y),
-      width: columnCount * EXPORT_PRESET.cellWidth + outerBorderWidth * 2,
-      height: rowCount * EXPORT_PRESET.cellHeight + outerBorderWidth * 2
+      width: columnCount * EXPORT_PRESET.cellWidth,
+      height: rowCount * EXPORT_PRESET.cellHeight
     };
     shellRect.right = shellRect.x + shellRect.width;
     shellRect.bottom = shellRect.y + shellRect.height;
-    const tableLeft = shellRect.x + outerBorderWidth;
-    const tableTop = shellRect.y + outerBorderWidth;
+    const tableLeft = shellRect.x;
+    const tableTop = shellRect.y;
 
     context.save();
     roundedRectPath(context, shellRect.x, shellRect.y, shellRect.width, shellRect.height, radius);
@@ -282,16 +282,24 @@ function drawExportFrameToCanvas(exportFrame) {
     if (columnCount > 1 || rowCount > 1) {
       context.strokeStyle = EXPORT_PRESET.gridColor;
       context.lineWidth = EXPORT_PRESET.gridLineWidth;
+      context.lineCap = 'butt';
+      context.lineJoin = 'miter';
       context.beginPath();
       for (let columnIndex = 1; columnIndex < columnCount; columnIndex += 1) {
-        const x = tableLeft + columnIndex * EXPORT_PRESET.cellWidth;
-        context.moveTo(x, shellRect.y);
-        context.lineTo(x, shellRect.bottom);
+        const edge = snapToOutputPixel(
+          tableLeft + columnIndex * EXPORT_PRESET.cellWidth
+        );
+        const x = edge;
+        context.moveTo(x, shellRect.y + halfGridLineWidth);
+        context.lineTo(x, shellRect.bottom - halfGridLineWidth);
       }
       for (let rowIndex = 1; rowIndex < rowCount; rowIndex += 1) {
-        const y = tableTop + rowIndex * EXPORT_PRESET.cellHeight;
-        context.moveTo(shellRect.x, y);
-        context.lineTo(shellRect.right, y);
+        const edge = snapToOutputPixel(
+          tableTop + rowIndex * EXPORT_PRESET.cellHeight
+        );
+        const y = edge;
+        context.moveTo(shellRect.x + halfGridLineWidth, y);
+        context.lineTo(shellRect.right - halfGridLineWidth, y);
       }
       context.stroke();
     }
@@ -301,14 +309,15 @@ function drawExportFrameToCanvas(exportFrame) {
 
     roundedRectPath(
       context,
-      shellRect.x + outerBorderWidth / 2,
-      shellRect.y + outerBorderWidth / 2,
-      shellRect.width - outerBorderWidth,
-      shellRect.height - outerBorderWidth,
-      Math.max(0, radius - outerBorderWidth / 2)
+      shellRect.x + halfGridLineWidth,
+      shellRect.y + halfGridLineWidth,
+      shellRect.width - EXPORT_PRESET.gridLineWidth,
+      shellRect.height - EXPORT_PRESET.gridLineWidth,
+      Math.max(0, radius - halfGridLineWidth)
     );
     context.strokeStyle = EXPORT_PRESET.gridColor;
     context.lineWidth = EXPORT_PRESET.gridLineWidth;
+    context.lineJoin = 'round';
     context.stroke();
   }
 

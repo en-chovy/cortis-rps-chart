@@ -1,4 +1,4 @@
-import { normalizeLegendName } from './legend-name.js?v=20260810-4';
+import { normalizeLegendName } from './legend-name.js?v=20260811-1';
 
 export const NAME_GROUP_COUNT = 5;
 export const PAINTABLE_CELL_COUNT = NAME_GROUP_COUNT * (NAME_GROUP_COUNT - 1);
@@ -119,6 +119,22 @@ export function deleteNameGroup(axis, groupIndex) {
   if (groups.includes(numericGroupIndex)) return;
   groups.push(numericGroupIndex);
   groups.sort((a, b) => a - b);
+}
+
+export function restoreNameGroup(axis, groupIndex) {
+  const numericGroupIndex = Number(groupIndex);
+  if (!['row', 'column'].includes(axis)
+    || !Number.isInteger(numericGroupIndex)
+    || numericGroupIndex < 0
+    || numericGroupIndex >= NAME_GROUP_COUNT) return;
+
+  const key = axis === 'row' ? 'deletedRows' : 'deletedColumns';
+  editableState[key] = editableState[key].filter(index => index !== numericGroupIndex);
+}
+
+export function restoreAllNameGroups() {
+  editableState.deletedRows = [];
+  editableState.deletedColumns = [];
 }
 
 export function paintNameGroup(axis, groupIndex, legendId) {

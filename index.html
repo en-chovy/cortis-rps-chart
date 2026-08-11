@@ -34,10 +34,10 @@
         } catch {}
     </script>
     <link rel="stylesheet" href="./assets/fonts/pretendard/1.3.9/pretendardvariable-dynamic-subset.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260810-4" />
+    <link rel="stylesheet" href="./styles.css?v=20260811-1" />
     <script
         type="module"
-        src="./app.js?v=20260810-4"
+        src="./app.js?v=20260811-1"
         onerror="document.documentElement.classList.remove('is-restoring-chart-state')"
     ></script>
 </head>
@@ -122,6 +122,10 @@
                 <path d="M15 7l5 5-5 5"></path>
                 <path d="M19 12h-8.25A5.75 5.75 0 0 0 5 17.75"></path>
             </svg>
+        </button>
+        <button class="restore-deleted-button" id="restoreDeletedButton" type="button" aria-haspopup="dialog" aria-controls="restoreDeletedModalOverlay" aria-label="복구할 삭제된 행이나 열 없음" disabled>
+            <span>행·열 복구</span>
+            <span class="restore-deleted-count" id="restoreDeletedCount" aria-hidden="true" hidden>0</span>
         </button>
         <button class="reset-button" id="resetButton" type="button">초기화</button>
     </div>
@@ -218,6 +222,19 @@
         <div class="modal-buttons">
             <button class="btn-cancel" id="cancelResetBtn" type="button">취소</button>
             <button class="btn-save btn-delete" id="confirmResetBtn" type="button">초기화</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="restoreDeletedModalOverlay">
+    <div class="modal restore-deleted-modal" role="dialog" aria-modal="true" aria-labelledby="restoreDeletedModalTitle" aria-describedby="restoreDeletedModalDescription">
+        <h3 id="restoreDeletedModalTitle">삭제한 행·열 복구</h3>
+        <p id="restoreDeletedModalDescription">복구할 행이나 열을 선택하세요. 기존에 칠한 색과 고스트 셀도 함께 돌아옵니다.</p>
+        <div class="restore-deleted-list" id="restoreDeletedList"></div>
+        <p class="visually-hidden" id="restoreDeletedStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="modal-buttons restore-deleted-actions">
+            <button class="btn-cancel" id="closeRestoreDeletedBtn" type="button">닫기</button>
+            <button class="btn-save" id="restoreAllDeletedBtn" type="button">모두 복구</button>
         </div>
     </div>
 </div>

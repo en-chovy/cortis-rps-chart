@@ -1,11 +1,18 @@
 const STORAGE_KEY = 'cortis-rps-chart:editable-state';
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
+const PREVIOUS_STORAGE_VERSION = 2;
 const LEGACY_STORAGE_VERSION = 1;
 const NAME_GROUP_COUNT = 5;
 const PAINTABLE_CELL_COUNT = NAME_GROUP_COUNT * (NAME_GROUP_COUNT - 1);
+const HISTORY_LIMIT = 100;
+const HISTORY_TYPE_MAX_LENGTH = 80;
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function isValidColor(color) {
@@ -82,6 +89,44 @@ function migrateLegacyEditableState(value) {
   };
 }
 
+function createEmptyHistory(editableState) {
+  return {
+    base: clone(editableState),
+    entries: [],
+    cursor: 0
+  };
+}
+
+function statesMatch(first, second) {
+  return JSON.stringify(first) === JSON.stringify(second);
+}
+
+function isValidHistory(history, editableState) {
+  if (!isPlainObject(history)
+    || !isValidEditableState(history.base)
+    || !Array.isArray(history.entries)
+    || history.entries.length > HISTORY_LIMIT
+    || !Number.isInteger(history.cursor)
+    || history.cursor < 0
+    || history.cursor > history.entries.length) {
+    return false;
+  }
+
+  const entriesAreValid = history.entries.every(entry => (
+    isPlainObject(entry)
+    && typeof entry.type === 'string'
+    && entry.type.length > 0
+    && entry.type.length <= HISTORY_TYPE_MAX_LENGTH
+    && isValidEditableState(entry.state)
+  ));
+  if (!entriesAreValid) return false;
+
+  const currentSnapshot = history.cursor === 0
+    ? history.base
+    : history.entries[history.cursor - 1].state;
+  return statesMatch(currentSnapshot, editableState);
+}
+
 function getSessionStorage(storage) {
   if (storage !== undefined) return storage;
   try {
@@ -91,7 +136,15 @@ function getSessionStorage(storage) {
   }
 }
 
-export function loadEditableState(storage) {
+function removeInvalidPayload(target) {
+  try {
+    target.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in restricted browsing contexts.
+  }
+}
+
+export function loadEditableSession(storage) {
   const target = getSessionStorage(storage);
   if (!target) return null;
 
@@ -101,44 +154,82 @@ export function loadEditableState(storage) {
 
     const payload = JSON.parse(raw);
     if (!isPlainObject(payload)) {
-      target.removeItem(STORAGE_KEY);
+      removeInvalidPayload(target);
       return null;
     }
 
     if (payload.version === STORAGE_VERSION && isValidEditableState(payload.editableState)) {
-      return payload.editableState;
+      const editableState = clone(payload.editableState);
+      const history = isValidHistory(payload.history, editableState)
+        ? clone(payload.history)
+        : createEmptyHistory(editableState);
+      return { editableState, history };
+    }
+
+    if (payload.version === PREVIOUS_STORAGE_VERSION
+      && isValidEditableState(payload.editableState)) {
+      const editableState = clone(payload.editableState);
+      return {
+        editableState,
+        history: createEmptyHistory(editableState)
+      };
     }
 
     if (payload.version === LEGACY_STORAGE_VERSION) {
-      const migrated = migrateLegacyEditableState(payload.editableState);
-      if (migrated) return migrated;
+      const editableState = migrateLegacyEditableState(payload.editableState);
+      if (editableState) {
+        return {
+          editableState,
+          history: createEmptyHistory(editableState)
+        };
+      }
     }
 
-    target.removeItem(STORAGE_KEY);
+    removeInvalidPayload(target);
     return null;
   } catch {
-    try {
-      target.removeItem(STORAGE_KEY);
-    } catch {
-      // Storage can be unavailable in restricted browsing contexts.
-    }
+    removeInvalidPayload(target);
     return null;
   }
 }
 
-export function saveEditableState(editableState, storage) {
+export function loadEditableState(storage) {
+  return loadEditableSession(storage)?.editableState ?? null;
+}
+
+export function saveEditableSession(editableState, history, storage) {
   const target = getSessionStorage(storage);
   if (!target || !isValidEditableState(editableState)) return false;
 
+  const safeHistory = isValidHistory(history, editableState)
+    ? history
+    : createEmptyHistory(editableState);
+  const createPayload = nextHistory => JSON.stringify({
+    version: STORAGE_VERSION,
+    editableState,
+    history: nextHistory
+  });
+
   try {
-    target.setItem(STORAGE_KEY, JSON.stringify({
-      version: STORAGE_VERSION,
-      editableState
-    }));
+    target.setItem(STORAGE_KEY, createPayload(safeHistory));
     return true;
   } catch {
-    return false;
+    try {
+      // Keeping the current chart is more important than keeping a long timeline.
+      target.setItem(STORAGE_KEY, createPayload(createEmptyHistory(editableState)));
+      return true;
+    } catch {
+      return false;
+    }
   }
+}
+
+export function saveEditableState(editableState, storage) {
+  return saveEditableSession(
+    editableState,
+    createEmptyHistory(editableState),
+    storage
+  );
 }
 
 export function clearEditableState(storage) {
@@ -154,3 +245,4 @@ export function clearEditableState(storage) {
 }
 
 export const editableStateStorageKey = STORAGE_KEY;
+export const editableHistoryLimit = HISTORY_LIMIT;
