@@ -21,6 +21,145 @@ test('renders the initial chart and controls', async ({ page }) => {
   await expect(page.locator('#redoButton')).toBeDisabled();
 });
 
+test('switches confirmed visible copy to English without changing chart state', async ({ page }) => {
+  const firstCell = page.locator('.paintable').first();
+  await firstCell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+
+  await page.locator('#languageButton').click();
+  const languageMenu = page.locator('#languageMenu');
+  await expect(languageMenu).toBeVisible();
+  await expect(languageMenu.locator('.language-option')).toHaveText(['한국어', 'English']);
+  await languageMenu.locator('[data-language="en"]').click();
+
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('h1')).toHaveText('CORTIS RPS Chart');
+  await expect(page.locator('.editable-label')).toHaveText([
+    'OTP', 'Like', 'Neutral', 'Pass', 'NOTP'
+  ]);
+  await expect(page.locator('#timestampToggle + span + span')).toHaveText('Include date in image');
+  await expect(page.locator('#saveImageButton span')).toHaveText('Save image');
+  await expect(page.locator('#restoreDeletedButton > span').first()).toHaveText('Restore top/bottom');
+  await expect(page.locator('#resetButton')).toHaveText('Reset');
+  await expect(page.locator('#contactButton')).toHaveText('Contact & bug reports');
+  await expect(page.locator('#unifiedModalOverlay h3')).toHaveText('Category settings');
+  await expect(page.locator('#unifiedSaveBtn')).toHaveText('Save');
+  await expect(page.locator('#resetModalTitle')).toHaveText('Reset chart');
+  await expect(page.locator('#resetModalDescription')).toContainText('This will reset all categories');
+
+  await expect(page.locator('.paintable-name').first()).toHaveText('마틴');
+  await expect(firstCell).toHaveText('젯틴');
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  await expect.poll(() => page.evaluate(() => (
+    localStorage.getItem('cortis-rps-chart:language')
+  ))).toBe('en');
+
+  await page.reload();
+  await expect(page.locator('h1')).toHaveText('CORTIS RPS Chart');
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+});
+
+test('opens localized release note and contribution routes from the footer', async ({ page }) => {
+  await page.locator('#languageButton').click();
+  await page.locator('#languageMenu [data-language="en"]').click();
+  await page.locator('#contactButton').click();
+
+  const overlay = page.locator('#contactModalOverlay');
+  await expect(overlay).toBeVisible();
+  await expect(page.locator('#contactModalTitle')).toHaveText('Contact & contribute');
+  await expect(overlay.locator('.contact-section h4')).toHaveText([
+    'Release notes, questions & bug reports',
+    'Contribute to localization'
+  ]);
+  await expect(overlay.locator('.contact-section p').first()).toContainText(
+    'Please leave questions and bug reports in the comments'
+  );
+  await expect(overlay.locator('.contact-section p').last()).toContainText('@setmefuri');
+
+  const actions = overlay.locator('.contact-action');
+  await expect(actions).toHaveText(['Open Postype', 'Contact on X']);
+  await expect(actions.first()).toHaveAttribute(
+    'href',
+    'https://www.postype.com/@chovhub/post/21315991'
+  );
+  await expect(actions.last()).toHaveAttribute('href', 'https://x.com/setmefuri');
+  await expect(actions.first()).toHaveAttribute('target', '_blank');
+  await expect(actions.last()).toHaveAttribute('rel', 'noopener noreferrer');
+
+  await page.keyboard.press('Escape');
+  await expect(overlay).toBeHidden();
+});
+
+test('uses compact text hierarchy throughout modals', async ({ page }, testInfo) => {
+  await page.locator('#resetButton').click();
+  const resetOverlay = page.locator('#resetModalOverlay');
+  await expect(resetOverlay.locator('h3')).toHaveCSS('font-size', '16px');
+  await expect(resetOverlay.locator('p')).toHaveCSS('font-size', '13px');
+  await expect(resetOverlay.locator('.modal-buttons button').first()).toHaveCSS(
+    'font-size',
+    '13px'
+  );
+  await page.locator('#cancelResetBtn').click();
+
+  await page.locator('#contactButton').click();
+  const contactOverlay = page.locator('#contactModalOverlay');
+  await expect(contactOverlay.locator('.contact-section h4').first()).toHaveCSS(
+    'font-size',
+    '13px'
+  );
+  await expect(contactOverlay.locator('.contact-action').first()).toHaveCSS(
+    'font-size',
+    '13px'
+  );
+  await page.locator('#closeContactBtn').click();
+
+  if (testInfo.project.name === 'mobile') {
+    await page.locator('#label-1').tap();
+    const unifiedOverlay = page.locator('#unifiedModalOverlay');
+    await expect(unifiedOverlay.locator('h3')).toHaveCSS('font-size', '15px');
+    await expect(page.locator('#unifiedSaveBtn')).toHaveCSS('font-size', '14px');
+    await expect(page.locator('#unifiedNameInput')).toHaveCSS('font-size', '16px');
+  }
+});
+
+test('keeps the English language controls inside the mobile viewport', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile');
+
+  await page.locator('#languageButton').tap();
+  await page.locator('#languageMenu [data-language="en"]').tap();
+  await expect(page.locator('h1')).toHaveText('CORTIS RPS Chart');
+  await page.locator('#languageButton').tap();
+
+  const layout = await page.evaluate(() => {
+    const root = document.scrollingElement;
+    const menuRect = document.getElementById('languageMenu').getBoundingClientRect();
+    return {
+      rootClientWidth: root.clientWidth,
+      rootScrollWidth: root.scrollWidth,
+      menuLeft: menuRect.left,
+      menuRight: menuRect.right
+    };
+  });
+
+  expect(layout.rootScrollWidth).toBeLessThanOrEqual(layout.rootClientWidth + 1);
+  expect(layout.menuLeft).toBeGreaterThanOrEqual(0);
+  expect(layout.menuRight).toBeLessThanOrEqual(layout.rootClientWidth);
+
+  await page.locator('#languageButton').tap();
+  await page.locator('#label-1').tap();
+  await expect(page.locator('#unifiedModalOverlay')).toBeVisible();
+  const modalLayout = await page.locator('#unifiedModalOverlay h3').evaluate(element => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    left: element.getBoundingClientRect().left,
+    right: element.getBoundingClientRect().right
+  }));
+  expect(modalLayout.scrollWidth).toBeLessThanOrEqual(modalLayout.clientWidth);
+  expect(modalLayout.left).toBeGreaterThanOrEqual(0);
+  expect(modalLayout.right).toBeLessThanOrEqual(layout.rootClientWidth);
+});
+
 test('keeps the mobile viewport stable and supports single-tap interactions', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile');
 
@@ -196,6 +335,11 @@ test('keeps plain modals at least 16 pixels from narrow viewport edges', async (
     await expect(page.locator('#resetModalOverlay')).toBeVisible();
     await expectModalGutters('#resetModalOverlay');
     await page.locator('#cancelResetBtn').tap();
+
+    await page.locator('#contactButton').tap();
+    await expect(page.locator('#contactModalOverlay')).toBeVisible();
+    await expectModalGutters('#contactModalOverlay');
+    await page.locator('#closeContactBtn').tap();
   }
 });
 
@@ -892,11 +1036,10 @@ test('restores all deleted groups as one undoable operation', async ({ page }) =
   await expect(table).toHaveAttribute('aria-colcount', '6');
   await expect(restoreButton).toBeDisabled();
   await expect(restoreCount).toBeHidden();
-  await expect(restoreOverlay.locator('.restore-groups-empty')).toHaveText('삭제한 왼이나 른이 없습니다.');
-  await expect(page.locator('#restoreAllDeletedBtn')).toBeDisabled();
+  await expect(restoreOverlay).toBeHidden();
+  await expect(page.locator('#undoButton')).toBeFocused();
   await expect(page.locator('#restoreDeletedStatus')).toHaveText('삭제한 왼과 른 4개를 모두 복구했습니다.');
 
-  await page.locator('#closeRestoreDeletedBtn').click();
   await page.locator('#undoButton').click();
   await expect(rowOne).toBeHidden();
   await expect(rowThree).toBeHidden();

@@ -1,6 +1,7 @@
-import { hexToRgb } from './color.js?v=20260811-3';
-import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260811-3';
-import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260811-3';
+import { hexToRgb } from './color.js?v=20260811-6';
+import { getLocalizedLegendName } from './i18n.js?v=20260811-6';
+import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260811-6';
+import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260811-6';
 
 const LEGEND_EXIT_FALLBACK_MS = 150;
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
@@ -326,15 +327,19 @@ export function renderLegends() {
   );
 
   legends.forEach((legend, index) => {
+    const localizedLegend = {
+      ...legend,
+      displayName: getLocalizedLegendName(legend)
+    };
     let item = existingItems.get(legend.id);
     const isNew = !item;
 
     if (item) {
       existingItems.delete(legend.id);
       cancelLegendRemoval(item);
-      updateLegendElement(item, legend);
+      updateLegendElement(item, localizedLegend);
     } else {
-      item = createLegendElement(legend);
+      item = createLegendElement(localizedLegend);
       const nextItem = legends.slice(index + 1)
         .map(nextLegend => existingItems.get(nextLegend.id))
         .find(candidate => candidate?.isConnected);

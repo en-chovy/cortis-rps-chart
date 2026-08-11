@@ -1,4 +1,4 @@
-import { normalizeLegendName } from './legend-name.js?v=20260811-3';
+import { normalizeLegendName } from './legend-name.js?v=20260811-6';
 
 export const NAME_GROUP_COUNT = 5;
 export const PAINTABLE_CELL_COUNT = NAME_GROUP_COUNT * (NAME_GROUP_COUNT - 1);

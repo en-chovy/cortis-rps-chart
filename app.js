@@ -1,6 +1,6 @@
-import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260811-3';
-import { createColorPicker } from './src/color-picker.js?v=20260811-3';
-import { initExportControls } from './src/export.js?v=20260811-3';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260811-6';
+import { createColorPicker } from './src/color-picker.js?v=20260811-6';
+import { initExportControls } from './src/export.js?v=20260811-6';
 import {
   captureEditableState,
   clearHistory,
@@ -9,7 +9,15 @@ import {
   initHistoryControls,
   redoEdit,
   undoEdit
-} from './src/history.js?v=20260811-3';
+} from './src/history.js?v=20260811-6';
+import {
+  applyDocumentTranslations,
+  getLanguage,
+  getLocalizedLegendName,
+  initializeLanguage,
+  setLanguage,
+  t
+} from './src/i18n.js?v=20260811-6';
 import {
   addLegend,
   createInitialEditableState,
@@ -26,23 +34,23 @@ import {
   restoreNameGroup,
   setLegendColor,
   toggleGhostCell
-} from './src/model.js?v=20260811-3';
+} from './src/model.js?v=20260811-6';
 import {
   LEGEND_NAME_MAX_LENGTH,
   limitLegendName
-} from './src/legend-name.js?v=20260811-3';
+} from './src/legend-name.js?v=20260811-6';
 import {
   clearEditableState,
   loadEditableSession,
   saveEditableSession
-} from './src/persistence.js?v=20260811-3';
+} from './src/persistence.js?v=20260811-6';
 import {
   getNameGroupName,
   initializeCells,
   renderApp,
   renderColors
-} from './src/render.js?v=20260811-3';
-import { state } from './src/state.js?v=20260811-3';
+} from './src/render.js?v=20260811-6';
+import { state } from './src/state.js?v=20260811-6';
 import {
   closeAllPopups,
   closeModal,
@@ -50,7 +58,7 @@ import {
   handleViewportResize,
   positionPopup,
   showModal
-} from './src/ui.js?v=20260811-3';
+} from './src/ui.js?v=20260811-6';
 
 let desktopPicker = null;
 let unifiedPicker = null;
@@ -91,7 +99,7 @@ function createRestoreGroupSection(title, axis, indexes) {
     button.className = 'restore-group-item-button';
     button.dataset.axis = axis;
     button.dataset.groupIndex = String(index);
-    button.textContent = '복구';
+    button.textContent = t('common.restore');
     button.setAttribute('aria-label', `${name} 복구`);
     item.append(label, button);
     items.appendChild(item);
@@ -106,16 +114,16 @@ function renderRestoreDeletedModal() {
   const { deletedRows, deletedColumns } = getEditableState();
   const sections = [];
   if (deletedColumns.length > 0) {
-    sections.push(createRestoreGroupSection('삭제한 왼', 'column', deletedColumns));
+    sections.push(createRestoreGroupSection(t('restore.deletedTop'), 'column', deletedColumns));
   }
   if (deletedRows.length > 0) {
-    sections.push(createRestoreGroupSection('삭제한 른', 'row', deletedRows));
+    sections.push(createRestoreGroupSection(t('restore.deletedBottom'), 'row', deletedRows));
   }
 
   if (sections.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'restore-groups-empty';
-    empty.textContent = '삭제한 왼이나 른이 없습니다.';
+    empty.textContent = t('restore.empty');
     list.replaceChildren(empty);
   } else {
     list.replaceChildren(...sections);
@@ -146,6 +154,61 @@ function updateRestoreDeletedControl() {
 function renderApplication() {
   renderApp();
   updateRestoreDeletedControl();
+}
+
+function updateLanguageSelection() {
+  const activeLanguage = getLanguage();
+  document.querySelectorAll('#languageMenu .language-option').forEach(option => {
+    option.setAttribute('aria-checked', String(option.dataset.language === activeLanguage));
+  });
+}
+
+function setLanguageMenuOpen(isOpen, { focusCurrent = false } = {}) {
+  const button = document.getElementById('languageButton');
+  const menu = document.getElementById('languageMenu');
+  if (!button || !menu) return;
+  menu.hidden = !isOpen;
+  button.setAttribute('aria-expanded', String(isOpen));
+  if (isOpen && focusCurrent) {
+    menu.querySelector(`[data-language="${getLanguage()}"]`)?.focus();
+  }
+}
+
+function applySelectedLanguage() {
+  applyDocumentTranslations();
+  renderApplication();
+  updateLanguageSelection();
+  const restoreOverlay = document.getElementById('restoreDeletedModalOverlay');
+  if (restoreOverlay && isVisible(restoreOverlay)) renderRestoreDeletedModal();
+}
+
+function initLanguageControls() {
+  const control = document.querySelector('.language-control');
+  const button = document.getElementById('languageButton');
+  const menu = document.getElementById('languageMenu');
+  if (!control || !button || !menu) return;
+
+  updateLanguageSelection();
+  button.addEventListener('click', () => {
+    setLanguageMenuOpen(menu.hidden, { focusCurrent: menu.hidden });
+  });
+  menu.addEventListener('click', event => {
+    const option = event.target.closest('.language-option');
+    if (!option || !setLanguage(option.dataset.language)) return;
+    applySelectedLanguage();
+    setLanguageMenuOpen(false);
+    button.focus({ preventScroll: true });
+  });
+  control.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || menu.hidden) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setLanguageMenuOpen(false);
+    button.focus({ preventScroll: true });
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!control.contains(event.target)) setLanguageMenuOpen(false);
+  });
 }
 
 function getNameError(input) {
@@ -274,7 +337,10 @@ function openUnifiedModal(id) {
 
   closeAllPopups({ commit: true });
   state.unifiedEditingId = Number(id);
-  prepareNameInput(document.getElementById('unifiedNameInput'), legend.name);
+  prepareNameInput(
+    document.getElementById('unifiedNameInput'),
+    getLocalizedLegendName(legend)
+  );
   showModal('unifiedModalOverlay');
   unifiedPicker.setValue(toPickerColor(color));
 }
@@ -303,9 +369,11 @@ function openNameModal(id) {
 
   state.isAdding = false;
   state.nameEditingId = Number(id);
-  document.getElementById('modalTitle').textContent = '이름 변경';
+  const modalTitle = document.getElementById('modalTitle');
+  modalTitle.dataset.i18n = 'category.renameTitle';
+  modalTitle.textContent = t('category.renameTitle');
   const input = document.getElementById('nameInput');
-  prepareNameInput(input, legend.name);
+  prepareNameInput(input, getLocalizedLegendName(legend));
   showModal('nameModalOverlay');
   requestAnimationFrame(() => input.focus());
 }
@@ -313,7 +381,9 @@ function openNameModal(id) {
 function openAddModal() {
   state.isAdding = true;
   state.nameEditingId = null;
-  document.getElementById('modalTitle').textContent = '새 범례 추가';
+  const modalTitle = document.getElementById('modalTitle');
+  modalTitle.dataset.i18n = 'category.addTitle';
+  modalTitle.textContent = t('category.addTitle');
   const input = document.getElementById('nameInput');
   prepareNameInput(input, '');
   showModal('nameModalOverlay');
@@ -385,6 +455,14 @@ function cancelReset() {
   closeModal('resetModalOverlay');
 }
 
+function openContact() {
+  showModal('contactModalOverlay');
+}
+
+function closeContact() {
+  closeModal('contactModalOverlay');
+}
+
 function confirmReset() {
   replaceEditableState(createInitialEditableState());
   renderApplication();
@@ -440,7 +518,7 @@ function restoreEveryDeletedGroup() {
   if (deletedCount === 0) return;
   commitMutation('groups-restore-all', restoreAllNameGroups);
   announceRestoredGroup(`삭제한 왼과 른 ${deletedCount}개를 모두 복구했습니다.`);
-  requestAnimationFrame(() => document.getElementById('closeRestoreDeletedBtn')?.focus());
+  closeRestoreDeleted();
 }
 
 function closeCellMenu() {
@@ -522,7 +600,7 @@ function openCellMenu(target) {
     const cellIndex = state.activeCellIndex;
     const isGhost = getEditableState().ghostCells[cellIndex] === true;
     const ghostToggle = document.createElement('button');
-    const ghostAction = isGhost ? '글자 보이기' : '글자 숨기기';
+    const ghostAction = isGhost ? t('cell.showLabel') : t('cell.hideLabel');
     ghostToggle.type = 'button';
     ghostToggle.className = 'menu-icon-action menu-ghost-toggle';
     ghostToggle.classList.toggle('is-active', isGhost);
@@ -541,7 +619,7 @@ function openCellMenu(target) {
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
     deleteButton.className = 'menu-delete-group';
-    deleteButton.textContent = '삭제';
+    deleteButton.textContent = t('common.delete');
     deleteButton.setAttribute('aria-label', `${targetName} ${axisLabel} 삭제`);
     deleteButton.addEventListener('click', () => {
       commitMutation(`${axis}-delete`, () => deleteNameGroup(axis, index));
@@ -609,6 +687,8 @@ function initModalButtons() {
   document.getElementById('restoreDeletedButton')?.addEventListener('click', openRestoreDeleted);
   document.getElementById('closeRestoreDeletedBtn')?.addEventListener('click', closeRestoreDeleted);
   document.getElementById('restoreAllDeletedBtn')?.addEventListener('click', restoreEveryDeletedGroup);
+  document.getElementById('contactButton')?.addEventListener('click', openContact);
+  document.getElementById('closeContactBtn')?.addEventListener('click', closeContact);
   document.getElementById('restoreDeletedList')?.addEventListener('click', event => {
     const button = event.target.closest('.restore-group-item-button');
     if (!button) return;
@@ -623,6 +703,7 @@ function initModalButtons() {
       else if (overlay.id === 'unifiedModalOverlay') cancelUnified();
       else if (overlay.id === 'resetModalOverlay') cancelReset();
       else if (overlay.id === 'restoreDeletedModalOverlay') closeRestoreDeleted();
+      else if (overlay.id === 'contactModalOverlay') closeContact();
     });
   });
 }
@@ -727,6 +808,9 @@ function initKeyboardInteraction() {
     if (handleModalKeyboard(event, document.getElementById('resetModalOverlay'), {
       cancel: cancelReset
     })) return;
+    if (handleModalKeyboard(event, document.getElementById('contactModalOverlay'), {
+      cancel: closeContact
+    })) return;
     const visualPicker = document.getElementById('visualPickerPopup');
     if (isVisible(visualPicker)) {
       if (isPlainKey(event, 'Escape')) {
@@ -800,6 +884,8 @@ function initGlobalInteraction() {
 }
 
 (function boot() {
+  initializeLanguage();
+  applyDocumentTranslations();
   try {
     const persistedSession = loadEditableSession();
     if (persistedSession) replaceEditableState(persistedSession.editableState);
@@ -816,6 +902,7 @@ function initGlobalInteraction() {
   }
 
   initColorPickers();
+  initLanguageControls();
   initLegendDelegation();
   initModalButtons();
   initGlobalInteraction();

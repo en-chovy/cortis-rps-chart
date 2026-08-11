@@ -1,4 +1,4 @@
-export function updateLegendElement(item, { id, name }) {
+export function updateLegendElement(item, { id, name, displayName = name }) {
   item.id = `item-${id}`;
   item.dataset.legendId = String(id);
 
@@ -11,7 +11,7 @@ export function updateLegendElement(item, { id, name }) {
   const label = item.querySelector('.editable-label');
   if (label) {
     label.id = `label-${id}`;
-    label.textContent = name;
+    label.textContent = displayName;
   }
 
   const deleteButton = item.querySelector('.btn-delete-item');
@@ -19,7 +19,7 @@ export function updateLegendElement(item, { id, name }) {
   return item;
 }
 
-export function createLegendElement({ id, name }) {
+export function createLegendElement({ id, name, displayName = name }) {
   const item = document.createElement('div');
   item.className = 'legend-item';
 
@@ -35,5 +35,5 @@ export function createLegendElement({ id, name }) {
   deleteButton.textContent = '✕';
 
   item.append(display, label, deleteButton);
-  return updateLegendElement(item, { id, name });
+  return updateLegendElement(item, { id, name, displayName });
 }

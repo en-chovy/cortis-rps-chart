@@ -34,17 +34,36 @@
         } catch {}
     </script>
     <link rel="stylesheet" href="./assets/fonts/pretendard/1.3.9/pretendardvariable-dynamic-subset.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260811-3" />
+    <link rel="stylesheet" href="./styles.css?v=20260811-6" />
     <script
         type="module"
-        src="./app.js?v=20260811-3"
+        src="./app.js?v=20260811-6"
         onerror="document.documentElement.classList.remove('is-restoring-chart-state')"
     ></script>
 </head>
 <body>
 
 <div class="container">
-    <h1>CORTIS RPS 취향표</h1>
+    <header class="page-header">
+        <span class="page-header-spacer" aria-hidden="true"></span>
+        <h1 data-i18n="page.title">CORTIS RPS 취향표</h1>
+        <div class="language-control">
+            <button class="language-button" id="languageButton" type="button" aria-label="언어 선택" aria-haspopup="menu" aria-expanded="false" aria-controls="languageMenu">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="8.25"></circle>
+                    <path d="M3.75 12h16.5M12 3.75c2.2 2.25 3.4 5.02 3.4 8.25S14.2 18 12 20.25M12 3.75C9.8 6 8.6 8.77 8.6 12s1.2 6 3.4 8.25"></path>
+                </svg>
+            </button>
+            <div class="language-menu" id="languageMenu" role="menu" hidden>
+                <button class="language-option" type="button" role="menuitemradio" data-language="ko" aria-checked="true">
+                    <span>한국어</span><span class="language-option-check" aria-hidden="true"></span>
+                </button>
+                <button class="language-option" type="button" role="menuitemradio" data-language="en" aria-checked="false">
+                    <span>English</span><span class="language-option-check" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+    </header>
 
     <div class="legend-wrapper" id="legendContainer">
         <div class="legend-item" id="item-1" data-legend-id="1">
@@ -97,7 +116,7 @@
         <label class="timestamp-toggle" for="timestampToggle">
             <input class="timestamp-toggle-input" id="timestampToggle" type="checkbox">
             <span class="timestamp-toggle-control" aria-hidden="true"></span>
-            <span>이미지에 날짜 표시</span>
+            <span data-i18n="export.includeDate">이미지에 날짜 표시</span>
         </label>
         <button class="btn-save-image" id="saveImageButton" type="button">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
@@ -105,35 +124,35 @@
                 <circle cx="8.25" cy="9" r="1.75"></circle>
                 <path d="M4.5 17.25l4.25-4.25a1.5 1.5 0 0 1 2.12 0l1.63 1.63 1.88-1.88a1.5 1.5 0 0 1 2.12 0l3 3"></path>
             </svg>
-            <span>이미지 저장</span>
+            <span data-i18n="export.save">이미지 저장</span>
         </button>
         <p class="visually-hidden" id="imageSaveStatus" role="status" aria-live="polite" aria-atomic="true"></p>
     </section>
 
     <div class="history-controls" role="group" aria-label="편집 작업">
-        <button class="history-button" id="undoButton" type="button" aria-label="실행 취소" title="실행 취소 (⌘/Ctrl+Z)" disabled>
+        <button class="history-button" id="undoButton" type="button" aria-label="실행 취소" title="실행 취소 (⌘/Ctrl+Z)" data-i18n-title="history.undoTooltip" disabled>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
                 <path d="M9 7L4 12l5 5"></path>
                 <path d="M5 12h8.25a5.75 5.75 0 0 1 5.75 5.75"></path>
             </svg>
         </button>
-        <button class="history-button" id="redoButton" type="button" aria-label="다시 실행" title="다시 실행 (⌘/Ctrl+Shift+Z)" disabled>
+        <button class="history-button" id="redoButton" type="button" aria-label="다시 실행" title="다시 실행 (⌘/Ctrl+Shift+Z)" data-i18n-title="history.redoTooltip" disabled>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
                 <path d="M15 7l5 5-5 5"></path>
                 <path d="M19 12h-8.25A5.75 5.75 0 0 0 5 17.75"></path>
             </svg>
         </button>
         <button class="restore-deleted-button" id="restoreDeletedButton" type="button" aria-haspopup="dialog" aria-controls="restoreDeletedModalOverlay" aria-label="복구할 삭제한 왼이나 른 없음" disabled>
-            <span>왼·른 복구</span>
+            <span data-i18n="restore.trigger">왼·른 복구</span>
             <span class="restore-deleted-count" id="restoreDeletedCount" aria-hidden="true" hidden>0</span>
         </button>
-        <button class="reset-button" id="resetButton" type="button">초기화</button>
+        <button class="reset-button" id="resetButton" type="button" data-i18n="chart.reset">초기화</button>
     </div>
 
     <footer class="site-footer">
         <span>&copy; 2026 en-chovy</span>
         <span aria-hidden="true">·</span>
-        <a href="https://www.postype.com/@chovhub/post/21315991" target="_blank" rel="noopener noreferrer">문의 및 버그 제보</a>
+        <button class="site-footer-trigger" id="contactButton" type="button" aria-haspopup="dialog" aria-controls="contactModalOverlay" data-i18n="footer.contact">문의 및 버그 제보</button>
     </footer>
 
     <div id="visualPickerPopup" class="ios-popup">
@@ -142,13 +161,13 @@
             <input type="range" class="hue-slider" id="hueSlider" min="0" max="360" value="0" aria-label="색조">
             <input type="range" class="alpha-slider" id="alphaSlider" min="0" max="1" step="0.01" value="0.5" aria-label="불투명도">
             <output class="selected-color-preview" id="colorPreview" for="hueSlider alphaSlider">
-                <span class="selected-color-label">선택 색상</span>
+                <span class="selected-color-label" data-i18n="color.selected">선택 색상</span>
                 <span class="selected-color-chip" aria-hidden="true">
                     <span class="selected-color-swatch"></span>
                 </span>
                 <span class="selected-color-value">#FFADAD · 50%</span>
             </output>
-            <button class="btn-done">완료</button>
+            <button class="btn-done" data-i18n="common.done">완료</button>
         </div>
     </div>
     <div id="cellMenu" class="ios-popup"></div>
@@ -156,41 +175,41 @@
 
 <div class="modal-overlay" id="nameModalOverlay">
     <div class="modal">
-        <h3 id="modalTitle">이름 변경</h3>
+        <h3 id="modalTitle" data-i18n="category.renameTitle">이름 변경</h3>
         <label class="visually-hidden" for="nameInput">범례 이름</label>
-        <input class="legend-name-input" type="text" id="nameInput" placeholder="이름을 입력하세요" aria-describedby="nameInputError" autocomplete="off">
-        <p class="legend-name-error" id="nameInputError" role="alert" aria-hidden="true">범례 이름은 15자까지 입력할 수 있어요.</p>
+        <input class="legend-name-input" type="text" id="nameInput" placeholder="이름을 입력하세요" data-i18n-placeholder="category.namePlaceholder" aria-describedby="nameInputError" autocomplete="off">
+        <p class="legend-name-error" id="nameInputError" role="alert" aria-hidden="true" data-i18n="category.nameLimit">범례 이름은 15자까지 입력할 수 있어요.</p>
         <div class="modal-buttons">
-            <button class="btn-cancel" type="button">취소</button>
-            <button class="btn-save" type="button">저장</button>
+            <button class="btn-cancel" type="button" data-i18n="common.cancel">취소</button>
+            <button class="btn-save" type="button" data-i18n="common.save">저장</button>
         </div>
     </div>
 </div>
 
 <div class="modal-overlay" id="deleteModalOverlay">
     <div class="modal">
-        <h3>범례 삭제</h3>
-        <p>이 범례를 정말 삭제할까요?</p>
+        <h3 data-i18n="category.deleteTitle">범례 삭제</h3>
+        <p data-i18n="category.deleteConfirm">이 범례를 정말 삭제할까요?</p>
         <div class="modal-buttons">
-            <button class="btn-cancel" type="button">취소</button>
-            <button class="btn-save btn-delete" id="confirmDelBtn" type="button">삭제</button>
+            <button class="btn-cancel" type="button" data-i18n="common.cancel">취소</button>
+            <button class="btn-save btn-delete" id="confirmDelBtn" type="button" data-i18n="common.delete">삭제</button>
         </div>
     </div>
 </div>
 
 <div class="modal-overlay" id="unifiedModalOverlay">
     <div class="modal unified-modal">
-        <h3>범례 설정</h3>
+        <h3 data-i18n="category.settingsTitle">범례 설정</h3>
         
         <div class="input-group">
-            <label for="unifiedNameInput">이름</label>
-            <input class="legend-name-input" type="text" id="unifiedNameInput" placeholder="이름을 입력하세요" aria-describedby="unifiedNameInputError" autocomplete="off">
-            <p class="legend-name-error" id="unifiedNameInputError" role="alert" aria-hidden="true">범례 이름은 15자까지 입력할 수 있어요.</p>
+            <label for="unifiedNameInput" data-i18n="category.nameLabel">이름</label>
+            <input class="legend-name-input" type="text" id="unifiedNameInput" placeholder="이름을 입력하세요" data-i18n-placeholder="category.namePlaceholder" aria-describedby="unifiedNameInputError" autocomplete="off">
+            <p class="legend-name-error" id="unifiedNameInputError" role="alert" aria-hidden="true" data-i18n="category.nameLimit">범례 이름은 15자까지 입력할 수 있어요.</p>
         </div>
         
         <div class="picker-container">
             <div class="picker-label-row">
-                <span class="picker-section-label">색상</span>
+                <span class="picker-section-label" data-i18n="category.colorLabel">색상</span>
                 <output class="selected-color-preview" id="unifiedColorPreview" for="unifiedHueSlider unifiedAlphaSlider">
                     <span class="selected-color-chip" aria-hidden="true">
                         <span class="selected-color-swatch"></span>
@@ -206,10 +225,10 @@
         </div>
 
         <div class="unified-action-buttons">
-            <button class="btn-delete-text" id="unifiedDeleteBtn" type="button">범례 삭제</button>
+            <button class="btn-delete-text" id="unifiedDeleteBtn" type="button" data-i18n="category.deleteTitle">범례 삭제</button>
             <div class="right-buttons">
-                <button class="btn-cancel" id="unifiedCancelBtn" type="button">취소</button>
-                <button class="btn-save" id="unifiedSaveBtn" type="button">확인</button>
+                <button class="btn-cancel" id="unifiedCancelBtn" type="button" data-i18n="common.cancel">취소</button>
+                <button class="btn-save" id="unifiedSaveBtn" type="button" data-i18n="common.confirm">확인</button>
             </div>
         </div>
     </div>
@@ -217,24 +236,45 @@
 
 <div class="modal-overlay" id="resetModalOverlay">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle" aria-describedby="resetModalDescription">
-        <h3 id="resetModalTitle">취향표 초기화</h3>
-        <p id="resetModalDescription">범례, 색상, 칠한 셀을 모두 기본 상태로 되돌립니다. 이 작업은 실행 취소할 수 없습니다.</p>
+        <h3 id="resetModalTitle" data-i18n="reset.title">취향표 초기화</h3>
+        <p id="resetModalDescription" data-i18n="reset.description">범례, 색상, 칠한 셀을 모두 기본 상태로 되돌립니다. 이 작업은 실행 취소할 수 없습니다.</p>
         <div class="modal-buttons">
-            <button class="btn-cancel" id="cancelResetBtn" type="button">취소</button>
-            <button class="btn-save btn-delete" id="confirmResetBtn" type="button">초기화</button>
+            <button class="btn-cancel" id="cancelResetBtn" type="button" data-i18n="common.cancel">취소</button>
+            <button class="btn-save btn-delete" id="confirmResetBtn" type="button" data-i18n="chart.reset">초기화</button>
         </div>
     </div>
 </div>
 
 <div class="modal-overlay" id="restoreDeletedModalOverlay">
     <div class="modal restore-deleted-modal" role="dialog" aria-modal="true" aria-labelledby="restoreDeletedModalTitle" aria-describedby="restoreDeletedModalDescription">
-        <h3 id="restoreDeletedModalTitle">삭제한 왼른 복구</h3>
-        <p id="restoreDeletedModalDescription">삭제한 왼이나 른을 선택해 복구하세요. 왼은 표 위쪽, 른은 표 왼쪽에 다시 나타나며 기존에 칠한 색과 고스트 셀도 함께 돌아옵니다.</p>
+        <h3 id="restoreDeletedModalTitle" data-i18n="restore.title">삭제한 왼른 복구</h3>
+        <p id="restoreDeletedModalDescription" data-i18n="restore.description">삭제한 왼이나 른을 선택해 복구하세요. 왼은 표 위쪽, 른은 표 왼쪽에 다시 나타나며 기존에 칠한 색과 고스트 셀도 함께 돌아옵니다.</p>
         <div class="restore-deleted-list" id="restoreDeletedList"></div>
         <p class="visually-hidden" id="restoreDeletedStatus" role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="modal-buttons restore-deleted-actions">
-            <button class="btn-cancel" id="closeRestoreDeletedBtn" type="button">닫기</button>
-            <button class="btn-save" id="restoreAllDeletedBtn" type="button">모두 복구</button>
+            <button class="btn-cancel" id="closeRestoreDeletedBtn" type="button" data-i18n="common.close">닫기</button>
+            <button class="btn-save" id="restoreAllDeletedBtn" type="button" data-i18n="common.restoreAll">모두 복구</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="contactModalOverlay">
+    <div class="modal contact-modal" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
+        <h3 id="contactModalTitle" data-i18n="contact.title">문의 및 기여</h3>
+        <div class="contact-sections">
+            <section class="contact-section">
+                <h4 data-i18n="contact.releaseTitle">릴리즈 노트·문의·버그 제보</h4>
+                <p data-i18n="contact.releaseDescription">업데이트 내역은 포스타입의 릴리즈 노트에서 확인할 수 있습니다. 문의와 버그 제보는 해당 게시글의 댓글로 남겨 주세요.</p>
+                <a class="contact-action" href="https://www.postype.com/@chovhub/post/21315991" target="_blank" rel="noopener noreferrer" data-i18n="contact.openPostype">포스타입에서 확인하기</a>
+            </section>
+            <section class="contact-section">
+                <h4 data-i18n="contact.contributeTitle">다국어 지원에 기여하기</h4>
+                <p data-i18n="contact.contributeDescription">현지 팬덤에서 사용하는 멤버명·씨피명 표기를 알고 있거나, 번역 및 다국어 지원 개발에 기여하고 싶다면 X의 @setmefuri로 연락해 주세요.</p>
+                <a class="contact-action" href="https://x.com/setmefuri" target="_blank" rel="noopener noreferrer" data-i18n="contact.openX">X에서 연락하기</a>
+            </section>
+        </div>
+        <div class="modal-buttons contact-modal-actions">
+            <button class="btn-cancel" id="closeContactBtn" type="button" data-i18n="common.close">닫기</button>
         </div>
     </div>
 </div>

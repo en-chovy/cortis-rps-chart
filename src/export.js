@@ -1,3 +1,5 @@
+import { t } from './i18n.js?v=20260811-6';
+
 const EXPORT_PRESET = {
   pixelRatio: 4,
   margin: 48,
@@ -11,7 +13,7 @@ const EXPORT_PRESET = {
 };
 
 const EXPORT_TEXT_SELECTOR = [
-  '.container > h1',
+  '.container h1',
   '#legendContainer .legend-item:not(.is-leaving) .editable-label',
   '#rpsTable th',
   '#rpsTable td',
@@ -344,7 +346,7 @@ async function saveChartImage() {
 
   saveButton.disabled = true;
   saveButton.setAttribute('aria-busy', 'true');
-  buttonLabel.textContent = '이미지 만드는 중…';
+  buttonLabel.textContent = t('export.creating');
   if (saveStatus) saveStatus.textContent = '이미지 파일을 만드는 중입니다.';
   let exportFrame = null;
   let didSave = false;
@@ -368,21 +370,21 @@ async function saveChartImage() {
   } catch (error) {
     console.error('Failed to save chart image:', error);
     if (saveStatus) saveStatus.textContent = '이미지 저장에 실패했습니다.';
-    window.alert('이미지를 만드는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    window.alert(t('export.errorAlert'));
   } finally {
     exportFrame?.remove();
     saveButton.removeAttribute('aria-busy');
 
     if (didSave) {
       saveButton.classList.add('is-success');
-      buttonLabel.textContent = '저장 완료';
+      buttonLabel.textContent = t('export.saved');
       if (saveStatus) saveStatus.textContent = '이미지 저장이 완료되었습니다.';
       await new Promise(resolve => setTimeout(resolve, successFeedbackDuration));
       saveButton.classList.remove('is-success');
     }
 
     saveButton.disabled = false;
-    buttonLabel.textContent = '이미지 저장';
+    buttonLabel.textContent = t('export.save');
   }
 }
 
