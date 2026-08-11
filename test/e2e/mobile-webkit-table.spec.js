@@ -4,6 +4,10 @@ const GRID_RGB = [51, 51, 51];
 const GRID_CSS_WIDTH = 2 / 3;
 const LIVE_DEVICE_PIXEL_RATIO = 3;
 const EXPORT_PIXEL_RATIO = 4;
+// Canvas antialiasing differs slightly across OS-level WebKit builds. Keep the
+// structural pixel assertions strict and allow only a narrow optical tolerance.
+const MIN_EXPORT_OPTICAL_COVERAGE = 0.62;
+const MAX_EXPORT_OPTICAL_COVERAGE = 0.70;
 
 function expectRgbClose(actual, expected, tolerance = 2) {
   expect(actual).toHaveLength(3);
@@ -937,8 +941,12 @@ test('keeps live and exported grid strokes stable while deleting rows and column
         Math.round(measurement.centerPhysical),
         8
       );
-      expect(measurement.opticalCoverageCss).toBeGreaterThanOrEqual(0.63);
-      expect(measurement.opticalCoverageCss).toBeLessThanOrEqual(0.70);
+      expect(measurement.opticalCoverageCss).toBeGreaterThanOrEqual(
+        MIN_EXPORT_OPTICAL_COVERAGE
+      );
+      expect(measurement.opticalCoverageCss).toBeLessThanOrEqual(
+        MAX_EXPORT_OPTICAL_COVERAGE
+      );
       expect(measurement.inkRunWidth).toBe(4);
       expect(measurement.opaquePixelCount).toBe(2);
     });
@@ -956,10 +964,10 @@ test('keeps live and exported grid strokes stable while deleting rows and column
     )).toBeCloseTo(2 / 3, 8);
     expect(
       capture.canvas.outerLeftMeasurement.opticalCoverageCss
-    ).toBeGreaterThanOrEqual(0.63);
+    ).toBeGreaterThanOrEqual(MIN_EXPORT_OPTICAL_COVERAGE);
     expect(
       capture.canvas.outerLeftMeasurement.opticalCoverageCss
-    ).toBeLessThanOrEqual(0.70);
+    ).toBeLessThanOrEqual(MAX_EXPORT_OPTICAL_COVERAGE);
     expect(capture.canvas.outerLeftMeasurement.inkRunWidth).toBe(3);
     expect(capture.canvas.outerLeftMeasurement.opaquePixelCount).toBe(2);
     expect(capture.canvas.lastRowAlphaMin).toBe(255);
