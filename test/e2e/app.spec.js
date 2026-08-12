@@ -91,6 +91,19 @@ test('opens localized release note and contribution routes from the footer', asy
   await expect(overlay).toBeHidden();
 });
 
+test('shows deleted top and bottom names in English', async ({ page }) => {
+  await page.locator('#languageButton').click();
+  await page.locator('#languageMenu [data-language="en"]').click();
+  await deleteRenderedNameGroup(page, 'row', 2);
+  await deleteRenderedNameGroup(page, 'column', 4);
+  await page.locator('#restoreDeletedButton').click();
+
+  await expect(page.locator('#restoreDeletedList .restore-group-name')).toHaveText([
+    'Keonho Top',
+    'Juhoon Bottom'
+  ]);
+});
+
 test('opens localization contribution from the language add action without changing state', async ({ page }) => {
   const firstCell = page.locator('.paintable').first();
   await firstCell.click();

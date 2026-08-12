@@ -1,6 +1,6 @@
-import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260811-7';
-import { createColorPicker } from './src/color-picker.js?v=20260811-7';
-import { initExportControls } from './src/export.js?v=20260811-7';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260812-1';
+import { createColorPicker } from './src/color-picker.js?v=20260812-1';
+import { initExportControls } from './src/export.js?v=20260812-1';
 import {
   captureEditableState,
   clearHistory,
@@ -9,7 +9,7 @@ import {
   initHistoryControls,
   redoEdit,
   undoEdit
-} from './src/history.js?v=20260811-7';
+} from './src/history.js?v=20260812-1';
 import {
   applyDocumentTranslations,
   getLanguage,
@@ -17,7 +17,7 @@ import {
   initializeLanguage,
   setLanguage,
   t
-} from './src/i18n.js?v=20260811-7';
+} from './src/i18n.js?v=20260812-1';
 import {
   addLegend,
   createInitialEditableState,
@@ -34,23 +34,23 @@ import {
   restoreNameGroup,
   setLegendColor,
   toggleGhostCell
-} from './src/model.js?v=20260811-7';
+} from './src/model.js?v=20260812-1';
 import {
   LEGEND_NAME_MAX_LENGTH,
   limitLegendName
-} from './src/legend-name.js?v=20260811-7';
+} from './src/legend-name.js?v=20260812-1';
 import {
   clearEditableState,
   loadEditableSession,
   saveEditableSession
-} from './src/persistence.js?v=20260811-7';
+} from './src/persistence.js?v=20260812-1';
 import {
   getNameGroupName,
   initializeCells,
   renderApp,
   renderColors
-} from './src/render.js?v=20260811-7';
-import { state } from './src/state.js?v=20260811-7';
+} from './src/render.js?v=20260812-1';
+import { state } from './src/state.js?v=20260812-1';
 import {
   closeAllPopups,
   closeModal,
@@ -58,7 +58,7 @@ import {
   handleViewportResize,
   positionPopup,
   showModal
-} from './src/ui.js?v=20260811-7';
+} from './src/ui.js?v=20260812-1';
 
 let desktopPicker = null;
 let unifiedPicker = null;
@@ -66,10 +66,12 @@ const NAME_LIMIT_FEEDBACK_DURATION = 1500;
 const nameLimitFeedbackTimers = new WeakMap();
 let restoreDeletedTrigger = null;
 
-const RESTORE_GROUP_NAMES = {
-  row: ['틴른', '젯른', '쮼른', '셩른', '튀른'],
-  column: ['틴왼', '젯왼', '듀왼', '엄왼', '낭왼'],
-};
+function getRestoreGroupName(axis, index) {
+  const localizedName = t(`restore.group.${axis}.${index}`);
+  return localizedName.startsWith('restore.group.')
+    ? getNameGroupName(index)
+    : localizedName;
+}
 
 function getDeletedGroupCount() {
   const { deletedRows, deletedColumns } = getEditableState();
@@ -86,7 +88,7 @@ function createRestoreGroupSection(title, axis, indexes) {
   const items = document.createElement('div');
   items.className = 'restore-group-items';
   indexes.forEach(index => {
-    const name = RESTORE_GROUP_NAMES[axis]?.[index] ?? getNameGroupName(index);
+    const name = getRestoreGroupName(axis, index);
     const item = document.createElement('div');
     item.className = 'restore-group-item';
 
@@ -513,7 +515,7 @@ function announceRestoredGroup(message) {
 }
 
 function restoreDeletedGroup(axis, index) {
-  const name = RESTORE_GROUP_NAMES[axis]?.[index] ?? getNameGroupName(index);
+  const name = getRestoreGroupName(axis, index);
   const didRestore = commitMutation(`${axis}-restore`, () => restoreNameGroup(axis, index));
   if (!didRestore) return;
   announceRestoredGroup(`${name}을 복구했습니다.`);

@@ -1,7 +1,7 @@
-import { hexToRgb } from './color.js?v=20260811-7';
-import { getLocalizedLegendName } from './i18n.js?v=20260811-7';
-import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260811-7';
-import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260811-7';
+import { hexToRgb } from './color.js?v=20260812-1';
+import { getLocalizedLegendName } from './i18n.js?v=20260812-1';
+import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260812-1';
+import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260812-1';
 
 const LEGEND_EXIT_FALLBACK_MS = 150;
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
