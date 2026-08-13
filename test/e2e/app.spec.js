@@ -30,7 +30,9 @@ test('switches confirmed visible copy to English without changing chart state', 
   await page.locator('#languageButton').click();
   const languageMenu = page.locator('#languageMenu');
   await expect(languageMenu).toBeVisible();
-  await expect(languageMenu.locator('.language-option')).toHaveText(['한국어', 'English']);
+  await expect(languageMenu.locator('.language-option')).toHaveText([
+    '한국어', 'English', '简体中文'
+  ]);
   await languageMenu.locator('[data-language="en"]').click();
 
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
@@ -58,6 +60,69 @@ test('switches confirmed visible copy to English without changing chart state', 
   await page.reload();
   await expect(page.locator('h1')).toHaveText('CORTIS RPS Chart');
   await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+});
+
+test('switches the full visible chart to Simplified Chinese without changing chart state', async ({ page }) => {
+  const firstCell = page.locator('.paintable').first();
+  await firstCell.click();
+  await page.locator('#cellMenu .menu-option').first().click();
+
+  await page.locator('#languageButton').click();
+  await page.locator('#languageMenu [data-language="zh-CN"]').click();
+
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await expect(page.locator('h1')).toHaveText('CORTIS RPS 口味表');
+  await expect(page.locator('.editable-label')).toHaveText([
+    '本命', '好嗑', '一般', '不嗑', '雷'
+  ]);
+  await expect(page.locator('thead .paintable-name')).toHaveText([
+    '马丁', '赵雨凡', '金主训', '严成玹', '安乾镐'
+  ]);
+  await expect(page.locator('.paintable')).toHaveText([
+    '酱麻面', '猪马', '溜马', '乾马',
+    '麻酱面', '猪排饭', '盐焗饭', '玉米饭',
+    '马猪', '饭排猪', '溜猪', '酒猪',
+    '马严', '饭焗盐', '猪溜', '酒溜',
+    '马乾', '饭米玉', '猪酒', '溜酒'
+  ]);
+  await expect(page.locator('#timestampToggle + span + span')).toHaveText('图片中显示日期');
+  await expect(page.locator('#saveImageButton span')).toHaveText('保存图片');
+  await expect(page.locator('#restoreDeletedButton > span').first()).toHaveText('恢复攻/受');
+  await expect(page.locator('#resetButton')).toHaveText('重置');
+  await expect(page.locator('#contactButton')).toHaveText('问题反馈');
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+  const overflowingChartLabels = await page.locator(
+    '#rpsTable .paintable-name, #rpsTable .paintable'
+  ).evaluateAll(elements => elements
+    .filter(element => element.scrollWidth > element.clientWidth + 1)
+    .map(element => element.textContent.trim()));
+  expect(overflowingChartLabels).toEqual([]);
+  await expect.poll(() => page.evaluate(() => (
+    localStorage.getItem('cortis-rps-chart:language')
+  ))).toBe('zh-CN');
+
+  await page.reload();
+  await expect(page.locator('h1')).toHaveText('CORTIS RPS 口味表');
+  await expect(firstCell).toHaveText('酱麻面');
+  await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
+});
+
+test('shows deleted attack and receive names in Simplified Chinese', async ({ page }) => {
+  await deleteRenderedNameGroup(page, 'row', 2);
+  await deleteRenderedNameGroup(page, 'column', 4);
+  await page.locator('#languageButton').click();
+  await page.locator('#languageMenu [data-language="zh-CN"]').click();
+  await page.locator('#restoreDeletedButton').click();
+
+  await expect(page.locator('#restoreDeletedList .restore-group-name')).toHaveText([
+    '安乾镐攻',
+    '金主训受'
+  ]);
+  await page.locator('#restoreAllDeletedBtn').click();
+  await expect(page.locator('[data-axis="row"][data-group-index="2"]')).toHaveText('金主训');
+  await expect(page.locator('[data-axis="column"][data-group-index="4"]')).toHaveText('安乾镐');
+  await expect(page.locator('[data-i18n="ship.2.4"]')).toHaveText('酒猪');
+  await expect(page.locator('[data-i18n="ship.4.2"]')).toHaveText('猪酒');
 });
 
 test('opens localized release note and contribution routes from the footer', async ({ page }) => {

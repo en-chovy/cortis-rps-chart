@@ -1,5 +1,5 @@
 const LANGUAGE_STORAGE_KEY = 'cortis-rps-chart:language';
-const SUPPORTED_LANGUAGES = new Set(['ko', 'en']);
+const SIMPLIFIED_CHINESE_LANGUAGE = 'zh-CN';
 
 const COPY = {
   ko: {
@@ -63,7 +63,32 @@ const COPY = {
     'history.undoTooltip': '실행 취소 (⌘/Ctrl+Z)',
     'history.redoTooltip': '다시 실행 (⌘/Ctrl+Shift+Z)',
     'reset.title': '취향표 초기화',
-    'reset.description': '범례, 색상, 칠한 셀을 모두 기본 상태로 되돌립니다. 이 작업은 실행 취소할 수 없습니다.'
+    'reset.description': '범례, 색상, 칠한 셀을 모두 기본 상태로 되돌립니다. 이 작업은 실행 취소할 수 없습니다.',
+    'member.0': '마틴',
+    'member.1': '제임스',
+    'member.2': '주훈',
+    'member.3': '성현',
+    'member.4': '건호',
+    'ship.0.1': '젯틴',
+    'ship.0.2': '훈틴',
+    'ship.0.3': '셩띤',
+    'ship.0.4': '껀틴',
+    'ship.1.0': '틴젯',
+    'ship.1.2': '눟젯',
+    'ship.1.3': '셩젯',
+    'ship.1.4': '낭젯',
+    'ship.2.0': '틴훈',
+    'ship.2.1': '젯쮸',
+    'ship.2.3': '셩쮼',
+    'ship.2.4': '낭쮼',
+    'ship.3.0': '틴셩',
+    'ship.3.1': '젯셩',
+    'ship.3.2': '쮸엄',
+    'ship.3.4': '낭셩',
+    'ship.4.0': '틴껀',
+    'ship.4.1': '젬껀',
+    'ship.4.2': '쮸건',
+    'ship.4.3': '엄껀'
   },
   en: {
     'page.title': 'CORTIS RPS Chart',
@@ -127,6 +152,94 @@ const COPY = {
     'history.redoTooltip': 'Redo (⌘/Ctrl+Shift+Z)',
     'reset.title': 'Reset chart',
     'reset.description': 'This will reset all categories, colors, and filled cells to their defaults. This action can’t be undone.'
+  },
+  [SIMPLIFIED_CHINESE_LANGUAGE]: {
+    'page.title': 'CORTIS RPS 口味表',
+    'language.add': '添加语言',
+    'legend.1': '本命',
+    'legend.2': '好嗑',
+    'legend.3': '一般',
+    'legend.4': '不嗑',
+    'legend.5': '雷',
+    'export.includeDate': '图片中显示日期',
+    'export.save': '保存图片',
+    'export.creating': '正在生成…',
+    'export.saved': '已保存',
+    'export.errorAlert': '生成图片时出现问题，请稍后重试。',
+    'restore.trigger': '恢复攻/受',
+    'restore.title': '恢复已删除的攻/受',
+    'restore.description': '选择要恢复的攻或受。攻会回到表格顶部，受会回到左侧，并保留原有颜色和隐藏文字。',
+    'restore.deletedTop': '已删除的攻',
+    'restore.deletedBottom': '已删除的受',
+    'restore.empty': '没有已删除的攻或受。',
+    'restore.group.row.0': '马丁受',
+    'restore.group.row.1': '赵雨凡受',
+    'restore.group.row.2': '金主训受',
+    'restore.group.row.3': '严成玹受',
+    'restore.group.row.4': '安乾镐受',
+    'restore.group.column.0': '马丁攻',
+    'restore.group.column.1': '赵雨凡攻',
+    'restore.group.column.2': '金主训攻',
+    'restore.group.column.3': '严成玹攻',
+    'restore.group.column.4': '安乾镐攻',
+    'chart.reset': '重置',
+    'footer.contact': '问题反馈',
+    'contact.title': '反馈与贡献',
+    'contact.releaseTitle': '更新日志与问题反馈',
+    'contact.releaseDescription': '请在 Postype 查看更新日志，并在该帖评论区留言咨询或反馈问题。',
+    'contact.openPostype': '前往 Postype',
+    'contact.contributeTitle': '参与多语言支持',
+    'contact.contributeDescription': '如想建议新增语言、补充当地粉丝使用的成员名或CP名，或参与翻译与本地化开发，请通过 X 联系 @setmefuri。',
+    'contact.openX': '通过 X 联系',
+    'common.cancel': '取消',
+    'common.save': '保存',
+    'common.confirm': '保存',
+    'common.delete': '删除',
+    'common.done': '完成',
+    'common.close': '关闭',
+    'common.restore': '恢复',
+    'common.restoreAll': '全部恢复',
+    'category.renameTitle': '重命名分类',
+    'category.addTitle': '添加分类',
+    'category.namePlaceholder': '输入名称',
+    'category.nameLimit': '分类名称最多15个字符。',
+    'category.deleteTitle': '删除分类',
+    'category.deleteConfirm': '确定删除这个分类吗？',
+    'category.settingsTitle': '分类设置',
+    'category.nameLabel': '名称',
+    'category.colorLabel': '颜色',
+    'color.selected': '当前颜色',
+    'cell.showLabel': '显示文字',
+    'cell.hideLabel': '隐藏文字',
+    'history.undoTooltip': '撤销 (⌘/Ctrl+Z)',
+    'history.redoTooltip': '重做 (⌘/Ctrl+Shift+Z)',
+    'reset.title': '重置口味表',
+    'reset.description': '将所有分类、颜色和已填色单元格恢复为默认状态。此操作无法撤销。',
+    'member.0': '马丁',
+    'member.1': '赵雨凡',
+    'member.2': '金主训',
+    'member.3': '严成玹',
+    'member.4': '安乾镐',
+    'ship.0.1': '酱麻面',
+    'ship.0.2': '猪马',
+    'ship.0.3': '溜马',
+    'ship.0.4': '乾马',
+    'ship.1.0': '麻酱面',
+    'ship.1.2': '猪排饭',
+    'ship.1.3': '盐焗饭',
+    'ship.1.4': '玉米饭',
+    'ship.2.0': '马猪',
+    'ship.2.1': '饭排猪',
+    'ship.2.3': '溜猪',
+    'ship.2.4': '酒猪',
+    'ship.3.0': '马严',
+    'ship.3.1': '饭焗盐',
+    'ship.3.2': '猪溜',
+    'ship.3.4': '酒溜',
+    'ship.4.0': '马乾',
+    'ship.4.1': '饭米玉',
+    'ship.4.2': '猪酒',
+    'ship.4.3': '溜酒'
   }
 };
 
@@ -160,8 +273,16 @@ function getBrowserLanguages(languages) {
 
 function normalizeLanguage(language) {
   if (typeof language !== 'string') return null;
-  const baseLanguage = language.trim().toLowerCase().split('-')[0];
-  return SUPPORTED_LANGUAGES.has(baseLanguage) ? baseLanguage : null;
+  const normalized = language.trim().replaceAll('_', '-').toLowerCase();
+  if (normalized === 'ko' || normalized.startsWith('ko-')) return 'ko';
+  if (normalized === 'en' || normalized.startsWith('en-')) return 'en';
+  if (normalized !== 'zh' && !normalized.startsWith('zh-')) return null;
+
+  const subtags = normalized.split('-').slice(1);
+  const usesTraditionalChinese = subtags.includes('hant')
+    || subtags.some(subtag => ['tw', 'hk', 'mo'].includes(subtag));
+  if (usesTraditionalChinese) return null;
+  return SIMPLIFIED_CHINESE_LANGUAGE;
 }
 
 export function resolveInitialLanguage({ storage, languages } = {}) {
@@ -177,7 +298,7 @@ export function resolveInitialLanguage({ storage, languages } = {}) {
     const normalized = normalizeLanguage(language);
     if (normalized) return normalized;
   }
-  return 'ko';
+  return 'en';
 }
 
 export function initializeLanguage(options = {}) {

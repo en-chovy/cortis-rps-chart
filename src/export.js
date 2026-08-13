@@ -1,4 +1,4 @@
-import { t } from './i18n.js?v=20260812-1';
+import { t } from './i18n.js?v=20260813-1';
 
 const EXPORT_PRESET = {
   pixelRatio: 4,

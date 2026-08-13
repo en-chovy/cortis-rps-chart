@@ -1,7 +1,7 @@
-import { hexToRgb } from './color.js?v=20260812-1';
-import { getLocalizedLegendName } from './i18n.js?v=20260812-1';
-import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260812-1';
-import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260812-1';
+import { hexToRgb } from './color.js?v=20260813-1';
+import { getLocalizedLegendName, t } from './i18n.js?v=20260813-1';
+import { createLegendElement, updateLegendElement } from './legend-dom.js?v=20260813-1';
+import { NAME_GROUP_COUNT, getEditableState } from './model.js?v=20260813-1';
 
 const LEGEND_EXIT_FALLBACK_MS = 150;
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
@@ -49,6 +49,21 @@ function captureTableStructure(table) {
     groupNames: headerCells.slice(1).map(cell => cell.textContent.trim()),
     renderedColumnKey: null
   };
+}
+
+function localizeTableStructure(structure) {
+  structure.columnHeaders.forEach((cell, index) => {
+    cell.textContent = t(`member.${index}`);
+  });
+  structure.rows.forEach(({ nameCell, cells }, rowIndex) => {
+    nameCell.textContent = t(`member.${rowIndex}`);
+    cells.forEach((cell, columnIndex) => {
+      if (rowIndex !== columnIndex) {
+        cell.textContent = t(`ship.${rowIndex}.${columnIndex}`);
+      }
+    });
+  });
+  structure.groupNames = structure.columnHeaders.map(cell => cell.textContent.trim());
 }
 
 function colorToRgba({ hex, alpha }) {
@@ -228,6 +243,8 @@ export function renderTableStructure() {
     tableStructure = captureTableStructure(table);
   }
   if (!tableStructure) return;
+
+  localizeTableStructure(tableStructure);
 
   const deletedRowIndexes = new Set(deletedRows);
   const deletedColumnIndexes = new Set(deletedColumns);

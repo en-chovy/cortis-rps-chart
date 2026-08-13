@@ -1,4 +1,4 @@
-import { cloneEditableState, getEditableState, replaceEditableState } from './model.js?v=20260812-1';
+import { cloneEditableState, getEditableState, replaceEditableState } from './model.js?v=20260813-1';
 
 const HISTORY_LIMIT = 100;
 let timeline = null;

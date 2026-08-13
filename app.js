@@ -1,6 +1,6 @@
-import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260812-1';
-import { createColorPicker } from './src/color-picker.js?v=20260812-1';
-import { initExportControls } from './src/export.js?v=20260812-1';
+import { hexToRgb, rgbToHsv, toColorValues } from './src/color.js?v=20260813-1';
+import { createColorPicker } from './src/color-picker.js?v=20260813-1';
+import { initExportControls } from './src/export.js?v=20260813-1';
 import {
   captureEditableState,
   clearHistory,
@@ -9,7 +9,7 @@ import {
   initHistoryControls,
   redoEdit,
   undoEdit
-} from './src/history.js?v=20260812-1';
+} from './src/history.js?v=20260813-1';
 import {
   applyDocumentTranslations,
   getLanguage,
@@ -17,7 +17,7 @@ import {
   initializeLanguage,
   setLanguage,
   t
-} from './src/i18n.js?v=20260812-1';
+} from './src/i18n.js?v=20260813-1';
 import {
   addLegend,
   createInitialEditableState,
@@ -34,23 +34,23 @@ import {
   restoreNameGroup,
   setLegendColor,
   toggleGhostCell
-} from './src/model.js?v=20260812-1';
+} from './src/model.js?v=20260813-1';
 import {
   LEGEND_NAME_MAX_LENGTH,
   limitLegendName
-} from './src/legend-name.js?v=20260812-1';
+} from './src/legend-name.js?v=20260813-1';
 import {
   clearEditableState,
   loadEditableSession,
   saveEditableSession
-} from './src/persistence.js?v=20260812-1';
+} from './src/persistence.js?v=20260813-1';
 import {
   getNameGroupName,
   initializeCells,
   renderApp,
   renderColors
-} from './src/render.js?v=20260812-1';
-import { state } from './src/state.js?v=20260812-1';
+} from './src/render.js?v=20260813-1';
+import { state } from './src/state.js?v=20260813-1';
 import {
   closeAllPopups,
   closeModal,
@@ -58,7 +58,7 @@ import {
   handleViewportResize,
   positionPopup,
   showModal
-} from './src/ui.js?v=20260812-1';
+} from './src/ui.js?v=20260813-1';
 
 let desktopPicker = null;
 let unifiedPicker = null;
