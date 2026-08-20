@@ -52,8 +52,8 @@ test('stores an explicit language choice and translates confirmed copy', () => {
   assert.equal(t('restore.group.row.2'), 'Juhoon Bottom');
   assert.equal(t('restore.group.column.4'), 'Keonho Top');
   assert.equal(t('language.add'), 'Add language');
-  assert.equal(t('contact.contributeTitle'), 'Contribute to localization');
-  assert.match(t('contact.contributeDescription'), /suggest another language.*@setmefuri/);
+  assert.equal(t('contact.contributeTitle'), 'Help with translations');
+  assert.match(t('contact.contributeDescription'), /add a new language.*@setmefuri/);
 });
 
 test('localizes untouched default legends without translating custom names', () => {

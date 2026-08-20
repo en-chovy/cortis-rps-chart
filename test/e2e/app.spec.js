@@ -134,23 +134,31 @@ test('opens localized release note and contribution routes from the footer', asy
   await expect(overlay).toBeVisible();
   await expect(page.locator('#contactModalTitle')).toHaveText('Contact & contribute');
   await expect(overlay.locator('.contact-section h4')).toHaveText([
-    'Release notes, questions & bug reports',
-    'Contribute to localization'
+    'Questions & bug reports',
+    'Help with translations'
   ]);
   await expect(overlay.locator('.contact-section p').first()).toContainText(
-    'Please leave questions and bug reports in the comments'
+    'leave questions or bug reports in the comments'
   );
   await expect(overlay.locator('.contact-section p').last()).toContainText('@setmefuri');
 
-  const actions = overlay.locator('.contact-action');
-  await expect(actions).toHaveText(['Open Postype', 'Contact on X']);
-  await expect(actions.first()).toHaveAttribute(
+  const cards = overlay.locator('.contact-card');
+  await expect(cards.locator('.contact-action')).toHaveText(['View release notes', 'Contact on X']);
+  await expect(cards.first()).toHaveAttribute(
     'href',
     'https://www.postype.com/@chovhub/post/21315991'
   );
-  await expect(actions.last()).toHaveAttribute('href', 'https://x.com/setmefuri');
-  await expect(actions.first()).toHaveAttribute('target', '_blank');
-  await expect(actions.last()).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(cards.last()).toHaveAttribute('href', 'https://x.com/setmefuri');
+  await expect(cards.first()).toHaveAttribute('target', '_blank');
+  await expect(cards.last()).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(overlay.locator('.contact-card-icon-postype img')).toHaveAttribute(
+    'src',
+    './assets/icons/postype-icon.png'
+  );
+  await expect(overlay.locator('.contact-card-icon-x img')).toHaveAttribute(
+    'src',
+    './assets/icons/x-logo.svg'
+  );
 
   await page.keyboard.press('Escape');
   await expect(overlay).toBeHidden();
@@ -189,7 +197,7 @@ test('opens localization contribution from the language add action without chang
     'rgb(0, 102, 204)'
   );
   await expect(overlay.locator('.contact-section-localization p')).toContainText(
-    '새 언어 지원을 제안하거나'
+    '새 언어 추가, 번역 오류 수정 등 외국어 지원에 기여하고 싶다면'
   );
   await expect(page.locator('#contactXLink')).toBeFocused();
   await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
@@ -202,7 +210,7 @@ test('opens localization contribution from the language add action without chang
   await expect(request).toHaveText('Add language');
   await request.click();
   await expect(overlay.locator('.contact-section-localization p')).toContainText(
-    'To suggest another language'
+    'help add a new language or fix translation errors'
   );
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
@@ -223,7 +231,7 @@ test('uses compact text hierarchy throughout modals', async ({ page }, testInfo)
   const contactOverlay = page.locator('#contactModalOverlay');
   await expect(contactOverlay.locator('.contact-section h4').first()).toHaveCSS(
     'font-size',
-    '13px'
+    '14px'
   );
   await expect(contactOverlay.locator('.contact-action').first()).toHaveCSS(
     'font-size',
