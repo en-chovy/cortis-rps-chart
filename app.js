@@ -190,6 +190,11 @@ function initLanguageControls() {
   const menu = document.getElementById('languageMenu');
   if (!control || !button || !menu) return;
 
+  document.addEventListener('keydown', event => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    control.dataset.focusModality = 'keyboard';
+  }, true);
+
   updateLanguageSelection();
   button.addEventListener('click', () => {
     setLanguageMenuOpen(menu.hidden, { focusCurrent: menu.hidden });
@@ -214,7 +219,11 @@ function initLanguageControls() {
     button.focus({ preventScroll: true });
   });
   document.addEventListener('pointerdown', event => {
-    if (!control.contains(event.target)) setLanguageMenuOpen(false);
+    if (control.contains(event.target)) {
+      control.dataset.focusModality = 'pointer';
+    } else {
+      setLanguageMenuOpen(false);
+    }
   });
 }
 

@@ -120,6 +120,9 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; letter-spacing: -0.5
 .language-request:focus-visible,
 .contact-card:focus-visible,
 .contact-action:focus-visible { outline: 3px solid rgba(0, 122, 255, 0.24); outline-offset: 2px; }
+.language-control[data-focus-modality="pointer"] .language-button:focus-visible,
+.language-control[data-focus-modality="pointer"] .language-option:focus-visible,
+.language-control[data-focus-modality="pointer"] .language-request:focus-visible { outline: none; }
 .language-menu {
     position: absolute; top: calc(100% + 8px); right: 0; z-index: 30;
     display: grid; min-width: 142px; padding: 6px;

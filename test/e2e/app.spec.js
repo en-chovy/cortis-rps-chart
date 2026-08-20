@@ -62,6 +62,33 @@ test('switches confirmed visible copy to English without changing chart state', 
   await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
 });
 
+test('shows the language focus ring only for keyboard interaction', async ({ page }, testInfo) => {
+  const button = page.locator('#languageButton');
+  const menu = page.locator('#languageMenu');
+  const activateWithPointer = locator => (
+    testInfo.project.name === 'mobile' ? locator.tap() : locator.click()
+  );
+
+  await activateWithPointer(button);
+  const selectedOption = menu.locator('.language-option[aria-checked="true"]');
+  await expect(selectedOption).toBeFocused();
+  await expect(selectedOption).toHaveCSS('outline-style', 'none');
+
+  await activateWithPointer(menu.locator('[data-language="en"]'));
+  await expect(button).toBeFocused();
+  await expect(button).toHaveCSS('outline-style', 'none');
+
+  await page.reload();
+  await page.keyboard.press('Tab');
+  await expect(button).toBeFocused();
+  await expect(button).toHaveCSS('outline-style', 'solid');
+
+  await button.press('Enter');
+  const keyboardSelectedOption = menu.locator('.language-option[aria-checked="true"]');
+  await expect(keyboardSelectedOption).toBeFocused();
+  await expect(keyboardSelectedOption).toHaveCSS('outline-style', 'solid');
+});
+
 test('switches the full visible chart to Simplified Chinese without changing chart state', async ({ page }) => {
   const firstCell = page.locator('.paintable').first();
   await firstCell.click();
