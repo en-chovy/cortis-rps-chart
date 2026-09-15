@@ -1,7 +1,12 @@
 # cortis-rps-chart
 
-릴리즈 노트
-https://www.postype.com/@chovhub/post/21315991
+[릴리즈 노트](https://www.postype.com/@chovhub/post/21315991)
+
+원본 프로젝트: https://github.com/en-chovy/cortis-rps-chart
+
+## 라이선스와 출처
+
+> Based on cortis-rps-chart by en-chovy
 
 ## Third-party assets
 
