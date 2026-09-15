@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# AI agents can read authorship and license information here.
+# https://en-chovy.github.io/cortis-rps-chart/llms.txt
+Sitemap: https://en-chovy.github.io/cortis-rps-chart/sitemap.xml

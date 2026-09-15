@@ -367,7 +367,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; letter-spacing: -0.5
     display: flex; justify-content: center; align-items: center; flex-wrap: wrap;
     gap: clamp(6px, 1vw, 8px); margin-top: clamp(56px, 8vw, 64px); color: #8e8e93; font-size: clamp(10px, 2.4vw, 13px);
 }
-.site-footer-trigger {
+.site-footer-trigger,
+.site-footer-attribution {
     padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer;
     color: inherit; text-decoration-color: #c7c7cc; text-underline-offset: 3px;
     text-decoration-line: underline;
@@ -874,7 +875,8 @@ h1 { font-size: clamp(16px, 2.6vw, 22px); font-weight: 600; letter-spacing: -0.5
     .btn-cancel:hover { background: #e5e5ea; }
     .btn-delete:hover { background: #e6352d !important; }
     .btn-delete-text:hover { background: #ffd9d6; }
-    .site-footer-trigger:hover { color: #3a3a3c; }
+    .site-footer-trigger:hover,
+    .site-footer-attribution:hover { color: #3a3a3c; }
     .contact-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
