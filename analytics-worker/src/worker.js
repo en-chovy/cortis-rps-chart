@@ -1,8 +1,3 @@
-/*
- * Source provenance: cortis-rps-chart:en-chovy:cpal-1.0:7f3c1a9e
- * Original source: https://github.com/en-chovy/cortis-rps-chart
- */
-
 const MAX_BODY_BYTES = 4096;
 const AGENT_USER_AGENTS = [
   ['openai', /GPTBot|ChatGPT-User|OAI-SearchBot/i],

@@ -54,7 +54,7 @@ test('accepts a valid pageview and writes the documented analytics dimensions', 
 test('records dedicated agent context access without storing the full user agent', async () => {
   const { env, points } = createEnv();
   const response = await worker.fetch(new Request(
-    'https://analytics.example/v1/agent?surface=llms&source=canonical',
+    'https://analytics.example/v1/agent?surface=agent-context&source=canonical',
     { headers: { 'User-Agent': 'ChatGPT-User/1.0' } }
   ), env);
   const body = await response.json();
