@@ -6,6 +6,7 @@ import {
   classifyRuntime,
   createPageView,
   getAcquisition,
+  isLocalDevelopmentHost,
   sendAnalyticsEvent,
   shouldRespectPrivacyPreference
 } from '../src/analytics.js';
@@ -72,6 +73,13 @@ test('respects browser privacy signals', () => {
   assert.equal(shouldRespectPrivacyPreference({ doNotTrack: '1' }), true);
   assert.equal(shouldRespectPrivacyPreference({ globalPrivacyControl: true }), true);
   assert.equal(shouldRespectPrivacyPreference({ doNotTrack: '0' }), false);
+});
+
+test('does not collect local development and end-to-end test traffic', () => {
+  assert.equal(isLocalDevelopmentHost('localhost'), true);
+  assert.equal(isLocalDevelopmentHost('127.0.0.1'), true);
+  assert.equal(isLocalDevelopmentHost('::1'), true);
+  assert.equal(isLocalDevelopmentHost('en-chovy.github.io'), false);
 });
 
 test('sends analytics as a credential-free keepalive request', async () => {

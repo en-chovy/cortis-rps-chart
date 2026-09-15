@@ -125,6 +125,10 @@ export function shouldRespectPrivacyPreference(navigatorApi) {
   return navigatorApi?.doNotTrack === '1' || navigatorApi?.globalPrivacyControl === true;
 }
 
+export function isLocalDevelopmentHost(hostname = '') {
+  return ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(hostname.toLowerCase());
+}
+
 export async function sendAnalyticsEvent(endpoint, event, fetchApi = globalThis.fetch) {
   if (!endpoint || typeof fetchApi !== 'function') return false;
   try {
@@ -147,7 +151,11 @@ export function initAnalytics({ documentApi = document, windowApi = window } = {
     documentApi.querySelector('meta[name="cortis-analytics-endpoint"]')?.content,
     500
   );
-  if (!endpoint || shouldRespectPrivacyPreference(windowApi.navigator)) return false;
+  if (
+    !endpoint
+    || shouldRespectPrivacyPreference(windowApi.navigator)
+    || isLocalDevelopmentHost(windowApi.location.hostname)
+  ) return false;
 
   const canonicalUrl = documentApi.querySelector('link[rel="canonical"]')?.href ?? '';
   const sessionId = createSessionId(windowApi.sessionStorage, windowApi.crypto);
