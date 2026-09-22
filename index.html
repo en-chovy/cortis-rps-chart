@@ -69,8 +69,9 @@
                 <button class="language-option" type="button" role="menuitemradio" data-language="zh-CN" aria-checked="false">
                     <span>简体中文</span><span class="language-option-check" aria-hidden="true"></span>
                 </button>
-                <div class="language-menu-separator" role="separator"></div>
-                <button class="language-request" type="button" role="menuitem" data-i18n="language.add">언어 추가</button>
+                <!-- Temporarily hidden: re-enable this route when X contributions are available again. -->
+                <div class="language-menu-separator" role="separator" hidden></div>
+                <button class="language-request" type="button" role="menuitem" data-i18n="language.add" tabindex="-1" hidden>언어 추가</button>
             </div>
         </div>
     </header>
@@ -285,7 +286,8 @@
                     <span class="contact-action" data-i18n="contact.openPostype">릴리즈 노트 확인하기</span>
                 </div>
             </a>
-            <a class="contact-section contact-card contact-section-localization contact-card-localization" id="contactXLink" href="https://x.com/setmefuri" target="_blank" rel="noopener noreferrer">
+            <!-- Temporarily hidden: keep the X contact route in place for a future re-enable. -->
+            <a class="contact-section contact-card contact-section-localization contact-card-localization" id="contactXLink" href="https://x.com/setmefuri" target="_blank" rel="noopener noreferrer" hidden>
                 <span class="contact-card-icon contact-card-icon-x" aria-hidden="true">
                     <img src="./assets/icons/x-logo.svg" alt="">
                 </span>

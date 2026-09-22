@@ -152,7 +152,7 @@ test('shows deleted attack and receive names in Simplified Chinese', async ({ pa
   await expect(page.locator('[data-i18n="ship.4.2"]')).toHaveText('猪酒');
 });
 
-test('opens localized release note and contribution routes from the footer', async ({ page }) => {
+test('opens the localized release note route while the X route stays hidden', async ({ page }) => {
   await page.locator('#languageButton').click();
   await page.locator('#languageMenu [data-language="en"]').click();
   await page.locator('#contactButton').click();
@@ -160,24 +160,23 @@ test('opens localized release note and contribution routes from the footer', asy
   const overlay = page.locator('#contactModalOverlay');
   await expect(overlay).toBeVisible();
   await expect(page.locator('#contactModalTitle')).toHaveText('Contact & contribute');
-  await expect(overlay.locator('.contact-section h4')).toHaveText([
+  const visibleCards = overlay.locator('.contact-card:not([hidden])');
+  await expect(visibleCards.locator('h4')).toHaveText([
     'Questions & bug reports',
-    'Help with translations'
   ]);
-  await expect(overlay.locator('.contact-section p').first()).toContainText(
+  await expect(visibleCards.locator('p')).toContainText(
     'leave questions or bug reports in the comments'
   );
-  await expect(overlay.locator('.contact-section p').last()).toContainText('@setmefuri');
+  await expect(overlay.locator('#contactXLink')).toHaveAttribute('hidden', '');
 
-  const cards = overlay.locator('.contact-card');
-  await expect(cards.locator('.contact-action')).toHaveText(['View release notes', 'Contact on X']);
-  await expect(cards.first()).toHaveAttribute(
+  await expect(visibleCards).toHaveCount(1);
+  await expect(visibleCards.locator('.contact-action')).toHaveText(['View release notes']);
+  await expect(visibleCards.first()).toHaveAttribute(
     'href',
     'https://www.postype.com/@chovhub/post/21315991'
   );
-  await expect(cards.last()).toHaveAttribute('href', 'https://x.com/setmefuri');
-  await expect(cards.first()).toHaveAttribute('target', '_blank');
-  await expect(cards.last()).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(visibleCards.first()).toHaveAttribute('target', '_blank');
+  await expect(visibleCards.first()).toHaveAttribute('rel', 'noopener noreferrer');
   await expect(overlay.locator('.contact-card-icon-postype img')).toHaveAttribute(
     'src',
     './assets/icons/postype-icon.png'
@@ -204,7 +203,7 @@ test('shows deleted top and bottom names in English', async ({ page }) => {
   ]);
 });
 
-test('opens localization contribution from the language add action without changing state', async ({ page }) => {
+test('keeps the disabled X contribution route out of the language menu', async ({ page }) => {
   const firstCell = page.locator('.paintable').first();
   await firstCell.click();
   await page.locator('#cellMenu .menu-option').first().click();
@@ -213,32 +212,17 @@ test('opens localization contribution from the language add action without chang
   const request = page.locator('#languageMenu .language-request');
   await expect(request).toHaveText('언어 추가');
   await expect(request).toHaveAttribute('role', 'menuitem');
-  await request.click();
-
-  const overlay = page.locator('#contactModalOverlay');
-  await expect(page.locator('#languageMenu')).toBeHidden();
-  await expect(overlay).toBeVisible();
-  await expect(overlay).toHaveClass(/is-localization-entry/);
-  await expect(overlay.locator('.contact-section-localization h4')).toHaveCSS(
-    'color',
-    'rgb(0, 102, 204)'
-  );
-  await expect(overlay.locator('.contact-section-localization p')).toContainText(
-    '새 언어 추가, 번역 오류 수정 등 외국어 지원에 기여하고 싶다면'
-  );
-  await expect(page.locator('#contactXLink')).toBeFocused();
+  await expect(request).toHaveAttribute('hidden', '');
+  await expect(page.locator('#languageMenu .language-menu-separator')).toBeHidden();
+  await expect(page.locator('#contactModalOverlay')).toBeHidden();
   await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
   await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
 
-  await page.locator('#closeContactBtn').click();
-  await page.locator('#languageButton').click();
   await page.locator('#languageMenu [data-language="en"]').click();
   await page.locator('#languageButton').click();
   await expect(request).toHaveText('Add language');
-  await request.click();
-  await expect(overlay.locator('.contact-section-localization p')).toContainText(
-    'help add a new language or fix translation errors'
-  );
+  await expect(request).toBeHidden();
+  await expect(page.locator('#contactModalOverlay')).toBeHidden();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(firstCell).toHaveCSS('background-color', 'rgba(255, 173, 173, 0.5)');
 });
