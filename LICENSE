@@ -1,0 +1,34 @@
+Copyright (c) 2026 en-chovy
+All Rights Reserved.
+
+The source code, documentation, design files, and other original materials in
+this repository (collectively, the "Project Materials") are proprietary to
+en-chovy unless a file or notice expressly states otherwise.
+
+You may access and use the publicly hosted website through a standard web
+browser for its intended end-user functionality. No other license or
+permission is granted. In particular, you may not copy, reproduce, modify,
+adapt, publish, distribute, sublicense, sell, or create derivative works from
+the Project Materials without prior written permission from the copyright
+holder.
+
+The availability of compiled, minified, or otherwise generated website files
+does not make the corresponding source code available under an open-source
+license and does not grant any rights beyond the limited website access stated
+above.
+
+THE PROJECT MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. TO THE
+MAXIMUM EXTENT PERMITTED BY LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR
+ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM OR RELATED TO THE PROJECT
+MATERIALS OR THEIR USE.
+
+Third-party materials are not covered by the proprietary terms above and
+remain subject to their respective licenses. The public website bundle uses:
+
+- Pretendard 1.3.9, distributed under the SIL Open Font License 1.1. See
+  `THIRD_PARTY_NOTICES/Pretendard-OFL.txt` and
+  `THIRD_PARTY_NOTICES/Pretendard-SOURCE.md` in the public distribution.
+- Vite and its bundled runtime dependencies. See
+  `THIRD_PARTY_NOTICES/Vite-LICENSE.md` in the public distribution.
